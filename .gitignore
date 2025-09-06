@@ -42,3 +42,4 @@ desktop.ini
 htmlcov/
 .pytest_cache/
 .env
+credentials.json
