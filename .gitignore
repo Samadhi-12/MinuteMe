@@ -42,4 +42,8 @@ desktop.ini
 htmlcov/
 .pytest_cache/
 .env
+
+# Google API credentials
 credentials.json
+token.json
+.env

@@ -1,5 +1,6 @@
 import os
-from ai_providers import gemini_provider
+from .ai_providers import gemini_provider
+from .calendar_service import schedule_action_item
 
 def run_action_item_tracker(meeting_text: str):
     return {
@@ -15,3 +16,15 @@ if __name__ == "__main__":
     """
     result = run_action_item_tracker(sample_notes)
     print(result)
+
+
+
+for item in result['action_items']:
+    task = item.get('task')
+    owner = item.get('owner')
+    deadline = item.get('deadline')
+    description = f"Action item assigned to {owner}"
+    schedule_action_item(task, description, deadline, owner)
+
+
+
