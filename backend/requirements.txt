@@ -1,3 +1,5 @@
+fastapi
+uvicorn
 dateparser
 google-auth-oauthlib
 google-api-python-client
@@ -14,3 +16,5 @@ python-dotenv>=1.0.1
 six==1.17.0
 tzdata==2025.2
 
+rake_nltk
+scikit-learn
