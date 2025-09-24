@@ -1,12 +1,32 @@
 import os
 from .ai_providers import gemini_provider
 from .calendar_service import schedule_action_item
+import spacy
+
+# Load spaCy English model
+nlp = spacy.load("en_core_web_sm")
 
 def run_action_item_tracker(meeting_text: str):
     return {
         "provider": "Gemini",
         "action_items": gemini_provider.extract_action_items(meeting_text)
     }
+
+def extract_action_items_nlp(meeting_text: str):
+    doc = nlp(meeting_text)
+    action_items = []
+    for sent in doc.sents:
+        # Simple rule: look for sentences with a person and a verb (task)
+        persons = [ent.text for ent in sent.ents if ent.label_ == "PERSON"]
+        if persons:
+            verbs = [token.lemma_ for token in sent if token.pos_ == "VERB"]
+            if verbs:
+                action_items.append({
+                    "owner": persons[0],
+                    "task": " ".join([token.text for token in sent if token.pos_ in ["VERB", "NOUN"]]),
+                    "deadline": None  # You can add more NLP to extract dates
+                })
+    return {"provider": "NLP", "action_items": action_items}
 
 def extract_and_schedule_tasks(meeting_text: str, schedule=True):
     """This is the function coordinator/api will call"""

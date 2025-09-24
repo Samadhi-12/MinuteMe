@@ -34,6 +34,18 @@ minutes_generator = MinutesGenerator()
 def create_minutes(transcript: dict = Body(...)):
     return minutes_generator.generate_minutes(transcript["text"])
 
+@app.get("/action-items")
+async def get_action_items():
+    # Get action items from the tracker's database/storage
+    # Note: You might want to implement a storage solution later
+    result = extract_and_schedule_tasks("", schedule=False)
+    return result
+
 @app.post("/action-items")
 def create_action_items(minutes: dict = Body(...)):
     return extract_and_schedule_tasks(minutes)
+
+@app.patch("/action-items/{item_id}/status")
+async def update_action_item_status(item_id: int, status_update: dict = Body(...)):
+    # In a real application, you would update this in a database
+    return {"message": f"Updated status for item {item_id}"}

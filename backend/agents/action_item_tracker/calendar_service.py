@@ -28,7 +28,7 @@ def schedule_action_item(task_name: str, description: str, deadline_str: str, ow
 
     # Convert natural language deadline to datetime
     if deadline_str:
-        deadline = dateparser.parse(deadline_str)
+        deadline = dateparser.parse(deadline_str, settings={'PREFER_DATES_FROM': 'future'})
     else:
         deadline = datetime.now() + timedelta(days=2)  # default 2 days later
     start_time = deadline.replace(hour=9, minute=0, second=0, microsecond=0)
