@@ -1,6 +1,0 @@
-Meeting: Test
-Summary:
-- Topics: 2 (urgent: 0, discussion: 0, info: 2)
-Key Items:
-- Test [info] - 10 mins
-- Test [info] - 10 mins

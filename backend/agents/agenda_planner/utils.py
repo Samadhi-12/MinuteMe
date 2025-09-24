@@ -186,7 +186,7 @@ def get_user_input_if_no_previous_file():
     """
     Returns user input if previous_meeting/meeting_details.json doesn't exist.
     """
-    file_path = "data/previous_meetings/meeting_details.json"
+    file_path = "backend/data/previous_meetings/meeting_details.json"
     
     previous_data = load_json(file_path)
     if previous_data:
