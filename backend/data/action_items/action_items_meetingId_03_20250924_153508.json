@@ -1,0 +1,24 @@
+{
+  "meeting_id": "meetingId_03",
+  "timestamp": "20250924_153508",
+  "items": [
+    {
+      "owner": "John",
+      "task": "Finalize and distribute Q4 budget",
+      "deadline": "2025-10-22",
+      "duration": 15
+    },
+    {
+      "owner": "Sarah",
+      "task": "Propose revised project timeline",
+      "deadline": "2025-10-22",
+      "duration": 15
+    },
+    {
+      "owner": "Alex",
+      "task": "Implement approved design changes",
+      "deadline": "2025-10-22",
+      "duration": 10
+    }
+  ]
+}

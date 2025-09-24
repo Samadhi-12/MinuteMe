@@ -1,33 +1,36 @@
 {
-  "meeting_id": "meetingId_01",
-  "date": "2025-09-24",
+  "meeting_id": "meetingId_03",
+  "date": "2025-09-25",
   "attendees": ["John Doe", "Sarah Smith", "Alex Lee"],
-  "agenda": [
-    "Budget review",
-    "Project plan update",
-    "Design discussion"
+  "discussion_points": [
+    "Budget allocation for Q4",
+    "Project timeline adjustments",
+    "Design review feedback"
   ],
   "decisions": [
-    "Budget report will be prepared by John by Friday.",
-    "Sarah will update the project plan.",
-    "Team will review the design next week."
+    "Increase budget for marketing by 10%.",
+    "Move project deadline to November 30.",
+    "Approve design changes proposed by Alex."
   ],
   "action_items": [
     {
-      "task": "Prepare the budget report",
+      "task": "Update budget spreadsheet",
       "owner": "John Doe",
-      "deadline": "2025-09-26"
+      "deadline": "2025-10-18"
     },
     {
-      "task": "Update the project plan",
+      "task": "Revise project timeline",
       "owner": "Sarah Smith",
-      "deadline": null
+      "deadline": "2025-10-20"
     },
     {
-      "task": "Review the design",
-      "owner": "Team",
-      "deadline": "2025-10-01"
+      "task": "Implement design changes",
+      "owner": "Alex Lee",
+      "deadline": "2025-10-21"
     }
   ],
-  "text": "John will prepare the budget report by Friday. Sarah will update the project plan. The team should review the design next week."
+  "current_discussion": "Reviewed Q4 budget and discussed project timeline changes.",
+  "future_discussion": "Plan marketing campaign and finalize design implementation.",
+  "next_meeting_date": "2025-10-22",
+  "text": "John presented the Q4 budget. Sarah suggested moving the project deadline. Alex shared design feedback. Decisions were made to increase the marketing budget, adjust the timeline, and approve design changes. Action items were assigned accordingly."
 }

@@ -55,9 +55,5 @@ async def update_action_item_status(item_id: int, status_update: dict = Body(...
 
 @app.post("/schedule-previous-action-items")
 def schedule_previous_action_items():
-    minutes = read_previous_minutes()
-    if not minutes or "text" not in minutes:
-        return {"error": "No previous meeting minutes found."}
-    meeting_id = minutes.get("meeting_id", "previous")
-    result = extract_and_schedule_tasks(minutes["text"], meeting_id=meeting_id)
-    return result
+    from agents.action_item_tracker.tracker import schedule_agenda_and_action_items_from_json
+    return schedule_agenda_and_action_items_from_json()
