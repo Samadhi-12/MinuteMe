@@ -1,8 +1,9 @@
-from .utils import (
+from utils import (
     save_json,
     get_next_meeting_id,
     extract_keywords_rake,
     get_user_input_if_no_previous_file,
+    save_text,
 )
 from datetime import datetime
 
@@ -23,6 +24,24 @@ def allocate_time(priority):
     elif priority == "discussion":
         return "15 mins"
     return "10 mins"
+
+def generate_meeting_summary(meeting_name, agenda_items):
+    """Create a concise textual summary for the meeting."""
+    lines = []
+    lines.append(f"Meeting: {meeting_name}")
+    lines.append("Summary:")
+    counts = {"urgent": 0, "discussion": 0, "info": 0}
+    for item in agenda_items:
+        pr = item.get("priority", "info")
+        if pr in counts:
+            counts[pr] += 1
+    lines.append(
+        f"- Topics: {len(agenda_items)} (urgent: {counts['urgent']}, discussion: {counts['discussion']}, info: {counts['info']})"
+    )
+    lines.append("Key Items:")
+    for item in agenda_items[:5]:
+        lines.append(f"- {item['topic']} [{item['priority']}] - {item['time_allocated']}")
+    return "\n".join(lines)
 
 def generate_agenda(user_input=None):
     """
@@ -69,8 +88,12 @@ def generate_agenda(user_input=None):
         "agenda": agenda_items
     }
 
-    # 6️⃣ Save JSON
-    save_json(agenda_json, f"data/agendas/{meeting_id}.json")
+    # 6️⃣ Ensure per-meeting folder and save summary + JSON inside it
+    meeting_dir = f"backend/data/agendas/{meeting_id}"
+    summary_text = generate_meeting_summary(meeting_name, agenda_items)
+    save_text(summary_text, f"{meeting_dir}/summary.txt")
+    agenda_json["summary"] = summary_text
+    save_json(agenda_json, f"{meeting_dir}/agenda.json")
 
     return agenda_json
 

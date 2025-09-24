@@ -1,0 +1,18 @@
+{
+    "meeting_id": "meetingId_02",
+    "meeting_name": "Test",
+    "meeting_date": "2025-09-24",
+    "agenda": [
+        {
+            "topic": "Test",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Test",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        }
+    ],
+    "summary": "Meeting: Test\nSummary:\n- Topics: 2 (urgent: 0, discussion: 0, info: 2)\nKey Items:\n- Test [info] - 10 mins\n- Test [info] - 10 mins"
+}

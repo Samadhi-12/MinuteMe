@@ -1,0 +1,48 @@
+{
+    "meeting_id": "meetingId_08",
+    "meeting_name": "Test Tet Tsfgfgdd Gdgsg Fgdry",
+    "meeting_date": "2025-09-24",
+    "agenda": [
+        {
+            "topic": "Test",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Tet",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Tsfgfgdd",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Gdgsg",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Fgdry",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Yghfhfg",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Ftyrfth",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Fdyhcgfh",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        }
+    ],
+    "summary": "Meeting: Test Tet Tsfgfgdd Gdgsg Fgdry\nSummary:\n- Topics: 8 (urgent: 0, discussion: 0, info: 8)\nKey Items:\n- Test [info] - 10 mins\n- Tet [info] - 10 mins\n- Tsfgfgdd [info] - 10 mins\n- Gdgsg [info] - 10 mins\n- Fgdry [info] - 10 mins"
+}
