@@ -23,7 +23,7 @@ def get_calendar_service():
     service = build('calendar', 'v3', credentials=creds)
     return service
 
-def schedule_action_item(task_name: str, description: str, deadline_str: str, owner: str):
+def schedule_action_item(task_name: str, description: str, deadline_str: str, owner: str, duration_minutes: int = 60):
     service = get_calendar_service()
 
     # Convert natural language deadline to datetime
@@ -32,7 +32,7 @@ def schedule_action_item(task_name: str, description: str, deadline_str: str, ow
     else:
         deadline = datetime.now() + timedelta(days=2)  # default 2 days later
     start_time = deadline.replace(hour=9, minute=0, second=0, microsecond=0)
-    end_time = start_time + timedelta(hours=1)
+    end_time = start_time + timedelta(minutes=duration_minutes)
 
     event = {
         'summary': f"{task_name} ({owner})",

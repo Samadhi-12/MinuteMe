@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from agents.agenda_planner.agenda_planner import generate_agenda
 from agents.minutes_generator.minutes_generator import MinutesGenerator
 from agents.action_item_tracker.tracker import extract_and_schedule_tasks
+from agents.action_item_tracker.previous_minutes_service import read_previous_minutes
 
 app = FastAPI()
 
@@ -43,9 +44,20 @@ async def get_action_items():
 
 @app.post("/action-items")
 def create_action_items(minutes: dict = Body(...)):
-    return extract_and_schedule_tasks(minutes)
+    meeting_id = minutes.get("meeting_id", "default")
+    meeting_text = minutes.get("text", "")
+    return extract_and_schedule_tasks(meeting_text, meeting_id=meeting_id)
 
 @app.patch("/action-items/{item_id}/status")
 async def update_action_item_status(item_id: int, status_update: dict = Body(...)):
     # In a real application, you would update this in a database
     return {"message": f"Updated status for item {item_id}"}
+
+@app.post("/schedule-previous-action-items")
+def schedule_previous_action_items():
+    minutes = read_previous_minutes()
+    if not minutes or "text" not in minutes:
+        return {"error": "No previous meeting minutes found."}
+    meeting_id = minutes.get("meeting_id", "previous")
+    result = extract_and_schedule_tasks(minutes["text"], meeting_id=meeting_id)
+    return result

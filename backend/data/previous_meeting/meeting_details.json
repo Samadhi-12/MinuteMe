@@ -1,11 +1,33 @@
 {
-  "current_discussion": [
-    "analyze recent social media campaign performance",
-    "review email newsletter engagement"
+  "meeting_id": "meetingId_01",
+  "date": "2025-09-24",
+  "attendees": ["John Doe", "Sarah Smith", "Alex Lee"],
+  "agenda": [
+    "Budget review",
+    "Project plan update",
+    "Design discussion"
   ],
-  "future_discussion": [
-    "plan upcoming influencer collaborations",
-    "set Q4 advertising budget"
+  "decisions": [
+    "Budget report will be prepared by John by Friday.",
+    "Sarah will update the project plan.",
+    "Team will review the design next week."
   ],
-  "next_meeting_date": "2025-09-10"
+  "action_items": [
+    {
+      "task": "Prepare the budget report",
+      "owner": "John Doe",
+      "deadline": "2025-09-26"
+    },
+    {
+      "task": "Update the project plan",
+      "owner": "Sarah Smith",
+      "deadline": null
+    },
+    {
+      "task": "Review the design",
+      "owner": "Team",
+      "deadline": "2025-10-01"
+    }
+  ],
+  "text": "John will prepare the budget report by Friday. Sarah will update the project plan. The team should review the design next week."
 }

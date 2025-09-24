@@ -1,6 +1,8 @@
 import os
 from .ai_providers import gemini_provider
 from .calendar_service import schedule_action_item
+from .agenda_service import read_agenda
+from .action_item_service import save_action_items
 import spacy
 
 # Load spaCy English model
@@ -28,9 +30,15 @@ def extract_action_items_nlp(meeting_text: str):
                 })
     return {"provider": "NLP", "action_items": action_items}
 
-def extract_and_schedule_tasks(meeting_text: str, schedule=True):
+def extract_and_schedule_tasks(meeting_text: str, meeting_id: str = None, schedule=True):
     """This is the function coordinator/api will call"""
     result = run_action_item_tracker(meeting_text)
+
+    duration = 60
+    if meeting_id:
+        agenda = read_agenda(meeting_id)
+        if agenda and "duration" in agenda:
+            duration = agenda["duration"]
 
     if schedule:
         for item in result['action_items']:
@@ -38,7 +46,9 @@ def extract_and_schedule_tasks(meeting_text: str, schedule=True):
             owner = item.get('owner')
             deadline = item.get('deadline')
             description = f"Action item assigned to {owner}"
-            schedule_action_item(task, description, deadline, owner)
+            schedule_action_item(task, description, deadline, owner, duration_minutes=duration)
+    if meeting_id:
+        save_action_items(meeting_id, result['action_items'])
     return result
 
 # ✅ Only run this when executing the script directly
