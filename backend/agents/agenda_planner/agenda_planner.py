@@ -31,10 +31,22 @@ def generate_agenda(user_input=None):
     or fallback to default example.
     """
 
-    # 0️⃣ Grab user input if not provided
+    # If called with no user_input, try to load the latest agenda from disk
     if user_input is None:
+        import os, json
+        agenda_dir = "data/agendas"
+        if os.path.exists(agenda_dir):
+            files = [f for f in os.listdir(agenda_dir) if f.endswith('.json')]
+            if files:
+                # Get the latest agenda file by meetingId number
+                files.sort(reverse=True)
+                latest_file = os.path.join(agenda_dir, files[0])
+                with open(latest_file, "r") as f:
+                    return json.load(f)
+        # If no agenda exists, fallback to default
         user_input = get_user_input_if_no_previous_file()
 
+    # ...existing code...
     # 1️⃣ Create meeting ID
     meeting_id = get_next_meeting_id()
 
@@ -44,7 +56,6 @@ def generate_agenda(user_input=None):
     # 3️⃣ Generate short agenda topics using RAKE
     agenda_items = []
     for topic in all_topics:
-        # RAKE returns list of phrases, safe to call .title()
         short_topics = extract_keywords_rake(topic, top_n=1) or [topic]
         short_topic = short_topics[0].title()
 

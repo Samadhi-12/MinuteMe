@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from agents.agenda_planner.agenda_planner import generate_agenda
-#from agents.minutes_generator.generator import generate_minutes
+from agents.minutes_generator.minutes_generator import MinutesGenerator
 from agents.action_item_tracker.tracker import extract_and_schedule_tasks
 
 app = FastAPI()
@@ -19,21 +19,20 @@ app.add_middleware(
 
 @app.get("/agenda")
 def get_agenda():
-    return {
-        "agenda": [
-            {"topic": "Budget Review", "priority": "urgent", "time_allocated": "20 mins"},
-            {"topic": "Project Plan", "priority": "discussion", "time_allocated": "15 mins"},
-            {"topic": "Design Review", "priority": "info", "time_allocated": "10 mins"}
-        ]
-    }
+    # Returns the latest agenda, or a default if none exist
+    return generate_agenda()
 
 @app.post("/agenda")
 def create_agenda(meeting_info: dict = Body(...)):
     return generate_agenda(meeting_info)
 
-#@app.post("/minutes")
-#def create_minutes(transcript: dict = Body(...)):
-#    return generate_minutes(transcript["text"])
+
+# Create a singleton MinutesGenerator instance
+minutes_generator = MinutesGenerator()
+
+@app.post("/minutes")
+def create_minutes(transcript: dict = Body(...)):
+    return minutes_generator.generate_minutes(transcript["text"])
 
 @app.post("/action-items")
 def create_action_items(minutes: dict = Body(...)):

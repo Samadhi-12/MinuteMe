@@ -15,3 +15,9 @@ export const postTranscript = async (transcript) => {
     action_items: actionRes.data.action_items || [],
   };
 };
+
+// NEW: Create a new agenda
+export const postAgenda = async (agendaData) => {
+  const res = await api.post("/agenda", agendaData);
+  return res.data;
+};
