@@ -49,3 +49,5 @@ htmlcov/
 credentials.json
 token.json
 .env
+
+ffmpeg.exe
