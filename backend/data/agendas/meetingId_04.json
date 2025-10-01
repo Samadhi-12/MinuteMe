@@ -1,0 +1,22 @@
+{
+    "meeting_id": "meetingId_04",
+    "meeting_name": "Marketing Strategy Review",
+    "meeting_date": "2025-11-01",
+    "agenda": [
+        {
+            "topic": "Review Q4 Campaigns",
+            "priority": "discussion",
+            "time_allocated": "20 mins"
+        },
+        {
+            "topic": "Social Media Plan",
+            "priority": "discussion",
+            "time_allocated": "15 mins"
+        },
+        {
+            "topic": "Budget Allocation",
+            "priority": "decision",
+            "time_allocated": "10 mins"
+        }
+    ]
+}
