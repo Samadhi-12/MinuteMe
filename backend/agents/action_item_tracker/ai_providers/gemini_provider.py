@@ -28,3 +28,9 @@ def extract_action_items(meeting_text:str):
     return clean_json_output(response.text)
 
 
+###########################################################
+#Sample Output
+#[
+#  {"owner": "John", "task": "Prepare budget", "deadline": "Friday"},
+#  {"owner": "Sarah", "task": "Update project plan", "deadline": null}
+#]

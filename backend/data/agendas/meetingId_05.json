@@ -1,0 +1,22 @@
+{
+    "meeting_id": "meetingId_05",
+    "meeting_name": "Product Launch Planning",
+    "meeting_date": "2025-12-01",
+    "agenda": [
+        {
+            "topic": "Finalize Launch Date",
+            "priority": "decision",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Marketing Materials",
+            "priority": "discussion",
+            "time_allocated": "20 mins"
+        },
+        {
+            "topic": "Demo Preparation",
+            "priority": "info",
+            "time_allocated": "15 mins"
+        }
+    ]
+}

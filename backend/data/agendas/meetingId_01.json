@@ -1,0 +1,27 @@
+{
+    "meeting_id": "meetingId_01",
+    "meeting_name": "Plan Upcoming Influencer Collaborations Set Q4 Advertising Budget Analyze Recent Social Media Campaign Performance Review Email Newsletter Engagement",
+    "meeting_date": "2025-09-10",
+    "agenda": [
+        {
+            "topic": "Plan Upcoming Influencer Collaborations",
+            "priority": "discussion",
+            "time_allocated": "15 mins"
+        },
+        {
+            "topic": "Set Q4 Advertising Budget",
+            "priority": "discussion",
+            "time_allocated": "15 mins"
+        },
+        {
+            "topic": "Analyze Recent Social Media Campaign Performance",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        },
+        {
+            "topic": "Review Email Newsletter Engagement",
+            "priority": "info",
+            "time_allocated": "10 mins"
+        }
+    ]
+}

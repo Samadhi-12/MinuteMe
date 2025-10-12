@@ -3,7 +3,22 @@ import re
 import json
 from pathlib import Path
 from collections import Counter
+
+# Ensure NLTK stopwords and punkt are downloaded
+import nltk
+for resource in ['stopwords', 'punkt']:
+    try:
+        nltk.data.find(f'corpora/{resource}' if resource == 'stopwords' else f'tokenizers/{resource}')
+    except LookupError:
+        nltk.download(resource)
 from rake_nltk import Rake
+
+# Ensure NLTK stopwords are downloaded
+import nltk
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 

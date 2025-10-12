@@ -1,0 +1,24 @@
+{
+  "meeting_id": "meetingId_03",
+  "timestamp": "20250924_152424",
+  "items": [
+    {
+      "owner": "Sarah",
+      "task": "Adjust project timeline",
+      "deadline": "2025-10-22",
+      "duration": 15
+    },
+    {
+      "owner": "John",
+      "task": "Increase marketing budget",
+      "deadline": "2025-10-22",
+      "duration": 15
+    },
+    {
+      "owner": null,
+      "task": "Approve design changes",
+      "deadline": "2025-10-22",
+      "duration": 15
+    }
+  ]
+}
