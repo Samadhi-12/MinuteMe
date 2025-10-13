@@ -14,6 +14,7 @@ import { setupAxiosInterceptors } from "./lib/axios"; // Import the setup functi
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Minutes from "./pages/Minutes";
+import MinuteDetail from "./pages/MinuteDetail"; // Import the new detail page
 import ActionItems from "./pages/ActionItems";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
@@ -89,6 +90,14 @@ function App() {
             element={
               <SignedIn>
                 <Minutes />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/minutes/:id" // Add route for specific minute
+            element={
+              <SignedIn>
+                <MinuteDetail />
               </SignedIn>
             }
           />

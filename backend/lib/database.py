@@ -88,6 +88,18 @@ def get_latest_minutes(user_id: str):
         latest_minutes["_id"] = str(latest_minutes["_id"])
     return latest_minutes
 
+def get_minutes_by_id(minutes_id: str, user_id: str):
+    """Retrieves a specific minutes document by its ID for a given user."""
+    db = get_db()
+    try:
+        minutes_doc = db.minutes.find_one({"_id": ObjectId(minutes_id), "user_id": user_id})
+        if minutes_doc and "_id" in minutes_doc:
+            minutes_doc["_id"] = str(minutes_doc["_id"])
+        return minutes_doc
+    except Exception as e:
+        print(f"Error fetching minutes by ID '{minutes_id}': {e}")
+        return None
+
 def get_agenda(meeting_id: str, user_id: str):
     """Retrieves a specific agenda for a given user."""
     db = get_db()

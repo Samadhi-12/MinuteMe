@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import api from "../lib/axios";
-import "../App.css"; // We'll add styles here
+import "../App.css";
 
 function AnalyzeMeetingModal({ isOpen, onClose }) {
     const [videoUrl, setVideoUrl] = useState("");
-    const [step, setStep] = useState("initial"); // 'initial', 'transcribing', 'transcribed', 'processing', 'done'
+    const [step, setStep] = useState("initial");
     const [message, setMessage] = useState("");
+    const navigate = useNavigate(); // Hook for navigation
 
     const handleTranscribe = async () => {
         if (!videoUrl) {
@@ -25,18 +27,24 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
         }
     };
 
-    const handleProcessMeeting = async () => {
+    const handleGenerateMinutes = async () => {
         setStep("processing");
-        setMessage("Generating minutes and action items...");
+        setMessage("Generating minutes...");
         try {
-            await api.post("/process-meeting");
+            // MODIFIED: Call the new endpoint
+            await api.post("/generate-minutes");
             setStep("done");
-            setMessage("🎉 Meeting processed successfully! You can view the results on the relevant pages.");
+            setMessage("🎉 Minutes generated successfully! You can now view them on the 'My Minutes' page.");
         } catch (error) {
             console.error("Processing failed:", error);
-            setStep("transcribed"); // Go back to previous step on failure
-            setMessage(`❌ Processing failed: ${error.response?.data?.detail || error.message}`);
+            setStep("transcribed");
+            setMessage(`❌ Minutes generation failed: ${error.response?.data?.detail || error.message}`);
         }
+    };
+
+    const handleFinishAndNavigate = () => {
+        handleClose();
+        navigate("/minutes"); // Navigate to the new minutes page
     };
 
     const handleClose = () => {
@@ -74,16 +82,16 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
                 {step === "transcribing" && <div className="loader"></div>}
 
                 {step === "transcribed" && (
-                    <button onClick={handleProcessMeeting} className="form-submit-btn">
-                        Generate Minutes & Action Items
+                    <button onClick={handleGenerateMinutes} className="form-submit-btn">
+                        Generate Minutes
                     </button>
                 )}
 
                 {step === "processing" && <div className="loader"></div>}
 
                 {step === "done" && (
-                    <button onClick={handleClose} className="form-submit-btn">
-                        Finish
+                    <button onClick={handleFinishAndNavigate} className="form-submit-btn">
+                        View Minutes
                     </button>
                 )}
 

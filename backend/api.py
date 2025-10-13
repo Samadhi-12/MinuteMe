@@ -5,7 +5,8 @@ from agents.minutes_generator.minutes_generator import generate_minutes
 from agents.action_item_tracker.tracker import extract_and_schedule_tasks
 from agents.transcription_agent.transcription_agent import transcribe_video
 from lib.auth import get_current_user
-from lib.database import get_all_agendas_for_user, get_all_action_items_for_user, get_agenda
+# MODIFIED: Import new DB functions
+from lib.database import get_all_agendas_for_user, get_all_action_items_for_user, get_agenda, get_all_minutes_for_user, get_minutes_by_id
 from agents.action_item_tracker.calendar_service import schedule_action_item
 import dateparser
 
@@ -77,6 +78,26 @@ async def get_action_items_endpoint(current_user: dict = Depends(get_current_use
     except Exception as e:
         print(f"Error getting action items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/minutes")
+async def get_all_minutes_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves all minutes documents for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    minutes = get_all_minutes_for_user(user_id)
+    return minutes
+
+@app.get("/minutes/{minutes_id}")
+async def get_minute_detail_endpoint(minutes_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves a single minutes document by its ID.
+    """
+    user_id = current_user.get("sub")
+    minute = get_minutes_by_id(minutes_id, user_id)
+    if not minute:
+        raise HTTPException(status_code=404, detail="Minutes not found.")
+    return minute
 
 @app.get("/events")
 async def get_events_endpoint(current_user: dict = Depends(get_current_user)):
@@ -177,38 +198,60 @@ async def transcribe_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/process-meeting")
-async def process_meeting_endpoint(current_user: dict = Depends(get_current_user)):
+@app.post("/generate-minutes")
+async def generate_minutes_endpoint(current_user: dict = Depends(get_current_user)):
     """
-    A single endpoint to run the post-meeting pipeline for the authenticated user:
-    1. Generate minutes from the latest transcript.
-    2. Extract action items and schedule them.
-    3. Generate the agenda for the next meeting.
+    Generates minutes from the latest transcript for the authenticated user.
     """
     try:
         user_id = current_user.get("sub")
         if not user_id:
             raise HTTPException(status_code=400, detail="User ID not found in token.")
 
-        print(f"Authenticated request. Processing meeting for user: {user_id}")
-        
-        # 1. Generate minutes (reads latest transcript from DB)
+        print(f"Authenticated request. Generating minutes for user: {user_id}")
         minutes_data = generate_minutes(user_id=user_id)
         if not minutes_data:
             raise HTTPException(status_code=404, detail="Failed to generate minutes. No transcript found?")
+        
+        # --- FIX: Convert ObjectId fields to strings ---
+        if "_id" in minutes_data and not isinstance(minutes_data["_id"], str):
+            minutes_data["_id"] = str(minutes_data["_id"])
+        if "meeting_id" in minutes_data and not isinstance(minutes_data["meeting_id"], str):
+            minutes_data["meeting_id"] = str(minutes_data["meeting_id"])
+        
+        return {"message": "Minutes generated successfully.", "minutes": minutes_data}
+    except Exception as e:
+        print(f"Error generating minutes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-        # 2. Extract action items and schedule (reads latest minutes from DB)
-        # The meeting_text parameter is now less important as the tracker reads from DB
-        action_items_result = extract_and_schedule_tasks(meeting_text=minutes_data.get("summary", ""), user_id=user_id)
+
+@app.post("/generate-action-items")
+async def generate_action_items_endpoint(
+    request_body: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generates action items for a specific minutes document.
+    Expects: {"minutes_id": "..."}
+    """
+    try:
+        user_id = current_user.get("sub")
+        minutes_id = request_body.get("minutes_id")
+        if not user_id or not minutes_id:
+            raise HTTPException(status_code=400, detail="User ID or minutes_id missing.")
+
+        print(f"Authenticated request. Generating action items for minutes_id: {minutes_id}")
+        action_items_result = extract_and_schedule_tasks(user_id=user_id, minutes_id=minutes_id)
+        if action_items_result is None:
+            raise HTTPException(status_code=404, detail="Minutes document not found.")
 
         return {
-            "message": "Meeting processed successfully.",
-            "minutes_generated": minutes_data,
+            "message": "Action items generated and scheduled successfully.",
             "action_items_result": action_items_result
         }
     except Exception as e:
-        print(f"Error processing meeting: {e}")
+        print(f"Error processing action items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Install command for frontend dependencies (to be run in the frontend directory)
-# npm install react-big-calendar moment
+
+# The old /process-meeting endpoint is now removed.

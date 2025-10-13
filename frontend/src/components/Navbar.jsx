@@ -6,6 +6,7 @@ const navLinks = [
   { to: "/", label: "Dashboard" },
   { to: "/create-agenda", label: "Create Agenda" },
   { to: "/agenda", label: "My Agendas" },
+  { to: "/minutes", label: "My Minutes" }, // New link
   { to: "/calendar", label: "Calendar" },
   { to: "/action-items", label: "Action Items" },
 ];

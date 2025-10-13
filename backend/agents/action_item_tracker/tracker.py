@@ -7,6 +7,8 @@ from ..agenda_planner.agenda_planner import generate_agenda
 import nltk
 from datetime import datetime, timedelta
 import dateparser
+# NEW: Import the function to get a specific minutes document
+from lib.database import get_minutes_by_id
 
 # The NLTK download logic has been moved to a central setup file (lib/nltk_setup.py)
 # and is run at server startup, so this loop is no longer needed here.
@@ -58,29 +60,30 @@ def extract_action_items_nlp(meeting_text: str):
 
     return {"provider": "NLP (NLTK)", "action_items": action_items}
 
-def extract_and_schedule_tasks(meeting_text: str, user_id: str, meeting_id: str = None, schedule=True):
-    # Switched to use the local NLP function as requested.
-    # The run_action_item_tracker (Gemini version) is still available if needed.
+def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
+    """
+    Reads a specific minutes document, extracts action items, and schedules them.
+    """
     print("\n--- 🚀 Starting Action Item Tracker ---")
+    
+    # MODIFIED: Read a specific minutes document instead of the latest one
+    minutes_doc = get_minutes_by_id(minutes_id, user_id)
+    if not minutes_doc:
+        print(f"❌ Could not find minutes with ID '{minutes_id}' for user '{user_id}'. Aborting.")
+        return None
+
+    # Use the summary from the specific minutes document as the text to process
+    meeting_text = minutes_doc.get("summary", "")
     result = extract_action_items_nlp(meeting_text)
     print(f"🔍 Found {len(result.get('action_items', []))} potential action items using NLP.")
 
-    from .previous_minutes_service import read_previous_minutes
-    meeting_date = None
-    next_meeting_date = None
-    # Pass the user_id to correctly fetch the latest minutes for the authenticated user
-    prev_minutes = read_previous_minutes(user_id)
-    if prev_minutes:
-        print(f"📖 Reading details from previous meeting document in DB.")
-        meeting_date = prev_minutes.get("date") or prev_minutes.get("meeting_date")
-        next_meeting_date = prev_minutes.get("next_meeting_date")
-    else:
-        print("⚠️ No previous meeting file found. Using sample notes for action items.")
+    meeting_date = minutes_doc.get("date")
+    next_meeting_date = minutes_doc.get("next_meeting_date")
 
     agenda_items = []
-    if meeting_id:
+    if minutes_id:
         # Pass the user_id to correctly fetch the agenda for the authenticated user
-        agenda = read_agenda(meeting_id, user_id)
+        agenda = read_agenda(minutes_id, user_id)
         if agenda:
             agenda_items = agenda.get("agenda", [])
 
@@ -148,16 +151,16 @@ def extract_and_schedule_tasks(meeting_text: str, user_id: str, meeting_id: str 
                 current_start += timedelta(minutes=item_duration)
     
     # Save action items back to the original minutes document in the DB
-    if prev_minutes and prev_minutes.get("_id"):
-        save_action_items(prev_minutes["_id"], result['action_items'])
+    if minutes_doc and minutes_doc.get("_id"):
+        save_action_items(minutes_doc["_id"], result['action_items'])
 
     # --- NEW: Close the loop by generating the next agenda ---
-    if prev_minutes and prev_minutes.get("next_meeting_date"):
+    if minutes_doc and minutes_doc.get("next_meeting_date"):
         print("\n--- 🔄 Closing the Loop: Generating Next Agenda ---")
         next_meeting_input = {
-            "topics": prev_minutes.get("future_discussion_points", ["Review previous action items"]),
+            "topics": minutes_doc.get("future_discussion_points", ["Review previous action items"]),
             "discussion_points": [item['task'] for item in result.get('action_items', [])],
-            "date": prev_minutes.get("next_meeting_date")
+            "date": minutes_doc.get("next_meeting_date")
         }
         print(f"🗓️  Input for next agenda on date: {next_meeting_input['date']}")
         # Call the agenda planner to create the next agenda file
