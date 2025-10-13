@@ -30,6 +30,7 @@ def generate_agenda(user_input=None):
     If user_input is None, it will automatically grab from previous meeting file
     or fallback to default example.
     """
+    print("\n--- 🚀 Starting Agenda Planner ---")
 
     # If called with no user_input, try to load the latest agenda from disk
     if user_input is None:
@@ -41,12 +42,15 @@ def generate_agenda(user_input=None):
                 # Get the latest agenda file by meetingId number
                 files.sort(reverse=True)
                 latest_file = os.path.join(agenda_dir, files[0])
+                print(f"📖 No input provided. Loading latest agenda: {files[0]}")
                 with open(latest_file, "r") as f:
                     return json.load(f)
         # If no agenda exists, fallback to default
+        print("⚠️ No input or existing agendas found. Using default example.")
         user_input = get_user_input_if_no_previous_file()
+    else:
+        print("🧠 Using provided input to generate new agenda.")
 
-    # ...existing code...
     # 1️⃣ Create meeting ID
     meeting_id = get_next_meeting_id()
 
@@ -81,7 +85,10 @@ def generate_agenda(user_input=None):
     }
 
     # 6️⃣ Save JSON
-    save_json(agenda_json, f"data/agendas/{meeting_id}.json")
+    output_path = f"data/agendas/{meeting_id}.json"
+    save_json(agenda_json, output_path)
+    print(f"✅ Agenda created and saved to: {output_path}")
+    print("--- ✨ Finished Agenda Planner ---\n")
 
     return agenda_json
 

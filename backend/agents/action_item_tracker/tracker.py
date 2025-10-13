@@ -3,6 +3,8 @@ from .ai_providers import gemini_provider
 from .calendar_service import schedule_action_item
 from .agenda_service import read_agenda
 from .action_item_service import save_action_items
+# Import the agenda planner to close the loop
+from ..agenda_planner.agenda_planner import generate_agenda
 import spacy
 from datetime import datetime, timedelta
 import dateparser
@@ -11,6 +13,7 @@ import dateparser
 nlp = spacy.load("en_core_web_sm")
 
 def run_action_item_tracker(meeting_text: str):
+    # This function is kept as a fallback or for comparison
     return {
         "provider": "Gemini",
         "action_items": gemini_provider.extract_action_items(meeting_text)
@@ -33,15 +36,22 @@ def extract_action_items_nlp(meeting_text: str):
     return {"provider": "NLP", "action_items": action_items}
 
 def extract_and_schedule_tasks(meeting_text: str, meeting_id: str = None, schedule=True):
-    result = run_action_item_tracker(meeting_text)
+    # Switched to use the local NLP function as requested.
+    # The run_action_item_tracker (Gemini version) is still available if needed.
+    print("\n--- 🚀 Starting Action Item Tracker ---")
+    result = extract_action_items_nlp(meeting_text)
+    print(f"🔍 Found {len(result.get('action_items', []))} potential action items using NLP.")
 
     from .previous_minutes_service import read_previous_minutes
     meeting_date = None
     next_meeting_date = None
     prev_minutes = read_previous_minutes()
     if prev_minutes:
+        print(f"📖 Reading details from previous meeting file.")
         meeting_date = prev_minutes.get("date") or prev_minutes.get("meeting_date")
         next_meeting_date = prev_minutes.get("next_meeting_date")
+    else:
+        print("⚠️ No previous meeting file found. Using sample notes for action items.")
 
     agenda_items = []
     if meeting_id:
@@ -113,6 +123,22 @@ def extract_and_schedule_tasks(meeting_text: str, meeting_id: str = None, schedu
                 current_start += timedelta(minutes=item_duration)
     if meeting_id:
         save_action_items(meeting_id, result['action_items'])
+
+    # --- NEW: Close the loop by generating the next agenda ---
+    if prev_minutes and prev_minutes.get("next_meeting_date"):
+        print("\n--- 🔄 Closing the Loop: Generating Next Agenda ---")
+        next_meeting_input = {
+            "topics": prev_minutes.get("future_discussion_points", ["Review previous action items"]),
+            "discussion_points": [item['task'] for item in result.get('action_items', [])],
+            "date": prev_minutes.get("next_meeting_date")
+        }
+        print(f"🗓️  Input for next agenda on date: {next_meeting_input['date']}")
+        # Call the agenda planner to create the next agenda file
+        new_agenda = generate_agenda(next_meeting_input)
+        print(f"✅ Successfully generated next agenda: {new_agenda.get('meeting_id')}")
+        print("--- ✨ Loop Closed ---")
+
+    print("--- ✨ Finished Action Item Tracker ---\n")
     return result
 
 def schedule_agenda_and_action_items_from_json():
@@ -192,5 +218,5 @@ if __name__ == "__main__":
     Sarah will update the project plan.
     The team should review the design next week.
     """
-    action_items = extract_and_schedule_tasks(sample_notes)
+    action_items = extract_and_schedule_tasks(sample_notes, schedule=False)
     print(action_items)
