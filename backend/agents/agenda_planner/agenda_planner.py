@@ -1,9 +1,9 @@
 from .utils import (
-    save_json,
     get_next_meeting_id,
     extract_keywords_rake,
     get_user_input_if_no_previous_file,
 )
+from lib.database import save_agenda # Import the new DB function
 from datetime import datetime
 
 def assign_priority(topic):
@@ -24,7 +24,7 @@ def allocate_time(priority):
         return "15 mins"
     return "10 mins"
 
-def generate_agenda(user_input=None):
+def generate_agenda(user_input=None, user_id="user_placeholder_123"):
     """
     Generate structured agenda JSON.
     If user_input is None, it will automatically grab from previous meeting file
@@ -32,27 +32,15 @@ def generate_agenda(user_input=None):
     """
     print("\n--- 🚀 Starting Agenda Planner ---")
 
-    # If called with no user_input, try to load the latest agenda from disk
+    # If called with no user_input, try to load from previous minutes in DB
     if user_input is None:
-        import os, json
-        agenda_dir = "data/agendas"
-        if os.path.exists(agenda_dir):
-            files = [f for f in os.listdir(agenda_dir) if f.endswith('.json')]
-            if files:
-                # Get the latest agenda file by meetingId number
-                files.sort(reverse=True)
-                latest_file = os.path.join(agenda_dir, files[0])
-                print(f"📖 No input provided. Loading latest agenda: {files[0]}")
-                with open(latest_file, "r") as f:
-                    return json.load(f)
-        # If no agenda exists, fallback to default
-        print("⚠️ No input or existing agendas found. Using default example.")
-        user_input = get_user_input_if_no_previous_file()
+        print("🧠 No input provided. Checking DB for previous meeting minutes.")
+        user_input = get_user_input_if_no_previous_file(user_id)
     else:
         print("🧠 Using provided input to generate new agenda.")
 
     # 1️⃣ Create meeting ID
-    meeting_id = get_next_meeting_id()
+    meeting_id = get_next_meeting_id(user_id)
 
     # 2️⃣ Combine all topics
     all_topics = user_input.get("topics", []) + user_input.get("discussion_points", [])
@@ -84,13 +72,12 @@ def generate_agenda(user_input=None):
         "agenda": agenda_items
     }
 
-    # 6️⃣ Save JSON
-    output_path = f"data/agendas/{meeting_id}.json"
-    save_json(agenda_json, output_path)
-    print(f"✅ Agenda created and saved to: {output_path}")
+    # 6️⃣ Save to MongoDB and get the serializable result
+    saved_agenda = save_agenda(agenda_json, user_id)
+    print(f"✅ Agenda '{meeting_id}' saved to MongoDB for user '{user_id}'.")
     print("--- ✨ Finished Agenda Planner ---\n")
 
-    return agenda_json
+    return saved_agenda
 
 
 # ✅ Optional: allow running independently for testing

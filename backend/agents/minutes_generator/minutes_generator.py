@@ -1,24 +1,24 @@
 import os
 import json
-import spacy
+import nltk
 from transformers import pipeline
+from lib.database import save_minutes, get_latest_transcript
+from datetime import datetime, timedelta
 
-# Define file paths as constants
-TRANSCRIPT_INPUT_PATH = os.path.join('data', 'transcript_meeting', 'transcript_meeting.json')
-MINUTES_OUTPUT_PATH = os.path.join('data', 'previous_meeting', 'meeting_details.json')
+# Ensure NLTK sentence tokenizer is downloaded
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
-def load_transcript(file_path: str) -> str:
-    """Loads the transcript text from a JSON file."""
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-            return data.get("transcript", "")
-    except FileNotFoundError:
-        print(f"Error: Transcript file not found at {file_path}")
-        return ""
-    except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {file_path}")
-        return ""
+def load_transcript_from_db(user_id: str) -> str:
+    """Loads the latest transcript text for a user from MongoDB."""
+    print(f"📖 Loading latest transcript from DB for user: {user_id}")
+    transcript_doc = get_latest_transcript(user_id)
+    if transcript_doc:
+        return transcript_doc.get("transcript", "")
+    print("⚠️ No transcript found in DB.")
+    return ""
 
 def generate_summary(text: str) -> str:
     """Generates a summary of the text using a local transformer model."""
@@ -32,37 +32,34 @@ def generate_summary(text: str) -> str:
     return summary[0]['summary_text']
 
 def extract_key_decisions(text: str) -> list:
-    """Extracts key decisions from the text using NLP rules."""
+    """Extracts key decisions from the text using NLTK."""
     print("Extracting key decisions...")
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(text)
     decisions = []
     # Keywords that often indicate a decision has been made
     decision_keywords = ["we will", "we decided", "the decision is", "agreed to", "will proceed with"]
-    for sent in doc.sents:
-        if any(keyword in sent.text.lower() for keyword in decision_keywords):
-            decisions.append(sent.text.strip())
+    for sent in nltk.sent_tokenize(text):
+        if any(keyword in sent.lower() for keyword in decision_keywords):
+            decisions.append(sent.strip())
     print(f"Found {len(decisions)} potential decisions.")
     return decisions
 
 def extract_future_topics(text: str) -> list:
-    """Extracts potential future topics from the text using NLP rules."""
+    """Extracts potential future topics from the text using NLTK."""
     print("Extracting future topics...")
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(text)
     future_topics = []
     # Keywords that often indicate a future topic
     future_keywords = ["next meeting", "discuss later", "in the future", "next time we should"]
-    for sent in doc.sents:
-        if any(keyword in sent.text.lower() for keyword in future_keywords):
-            future_topics.append(sent.text.strip())
+    for sent in nltk.sent_tokenize(text):
+        if any(keyword in sent.lower() for keyword in future_keywords):
+            future_topics.append(sent.strip())
     print(f"Found {len(future_topics)} potential future topics.")
     return future_topics
 
-def generate_minutes(transcript_path: str, output_path: str):
-    """Main function to generate and save meeting minutes."""
+def generate_minutes(user_id: str = "user_placeholder_123"):
+    """Main function to generate and save meeting minutes to MongoDB."""
     print("\n--- 🚀 Starting Minutes Generator ---")
-    transcript = load_transcript(transcript_path)
+    # This now reads from the database instead of a file
+    transcript = load_transcript_from_db(user_id)
     if not transcript:
         print("Aborting: No transcript content to process.")
         return
@@ -71,34 +68,26 @@ def generate_minutes(transcript_path: str, output_path: str):
     decisions = extract_key_decisions(transcript)
     future_topics = extract_future_topics(transcript)
 
-    # Structure the output to be compatible with the action_item_tracker
+    # Structure the output to be saved in the 'minutes' collection
     output_data = {
-        "meeting_id": "generated_from_transcript", # This could be dynamic in a real app
-        "date": "2025-10-13", # Placeholder date
-        "next_meeting_date": "2025-10-20", # Placeholder date
+        "meeting_id": f"minutes_{user_id}_{datetime.now().strftime('%Y%m%d')}",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "next_meeting_date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
         "summary": summary,
         "decisions": decisions,
-        "future_discussion_points": future_topics, # Added future topics
+        "future_discussion_points": future_topics,
         "action_items": [] # The action_item_tracker will populate this later
     }
     print(f"📝 Prepared minutes data with {len(decisions)} decisions and {len(future_topics)} future topics.")
 
-    # Ensure the output directory exists
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
+    # Save the structured minutes to MongoDB
+    inserted_id = save_minutes(output_data, user_id)
 
-    # Save the structured minutes
-    with open(output_path, 'w') as f:
-        json.dump(output_data, f, indent=2)
-
-    print(f"✅ Meeting minutes successfully generated and saved to {output_path}")
+    print(f"✅ Meeting minutes successfully saved to MongoDB with ID: {inserted_id}")
     print("--- ✨ Finished Minutes Generator ---\n")
     return output_data
 
 if __name__ == '__main__':
     # This allows you to run the script directly to generate minutes
-    # from the existing transcript file.
-    # Run from the `backend` directory:
-    # python -m agents.minutes_generator.minutes_generator
-    generate_minutes(TRANSCRIPT_INPUT_PATH, MINUTES_OUTPUT_PATH)
+    # from the latest transcript in the DB.
+    generate_minutes()

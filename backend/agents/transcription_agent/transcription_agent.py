@@ -1,29 +1,33 @@
 import os
 import json
 import time
+import gdown
+from google.generativeai import GenerativeModel
 import google.generativeai as genai
 from dotenv import load_dotenv
-import gdown  # For downloading from Google Drive
+from lib.database import save_transcript
+# --- NEW: Import the specific error class ---
+from pymongo.errors import ConnectionFailure
+import moviepy.editor as mp
 
 def configure_gemini():
     """
     Configures the Gemini API with the key from environment variables.
     """
     load_dotenv()
-    # Corrected to use GOOGLE_API_KEY from your .env file
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables. Please set it in your .env file.")
     genai.configure(api_key=api_key)
 
-def transcribe_video(video_path: str = None, video_url: str = None, output_path: str = "transcript.json"):
+def transcribe_video(video_path: str = None, video_url: str = None, user_id: str = "user_placeholder_123"):
     """
     Transcribes a video file using the Gemini model, downloading it if a URL is provided.
 
     Args:
         video_path (str, optional): The local path to the video file.
         video_url (str, optional): A public URL (e.g., Google Drive) to the video file.
-        output_path (str): The path to save the output JSON file.
+        user_id (str): The ID of the user to associate the transcript with.
 
     Returns:
         str: The generated transcript text, or None if an error occurred.
@@ -33,7 +37,8 @@ def transcribe_video(video_path: str = None, video_url: str = None, output_path:
 
     local_video_path = video_path
     is_temp_file = False
-    video_file = None
+    temp_video_path = None
+    temp_audio_path = None
 
     try:
         # 1. Configure the Gemini API
@@ -45,70 +50,82 @@ def transcribe_video(video_path: str = None, video_url: str = None, output_path:
             # Define a temporary path for the downloaded file
             temp_dir = "data/meeting_video/temp"
             os.makedirs(temp_dir, exist_ok=True)
-            local_video_path = os.path.join(temp_dir, "downloaded_video.mp4")
-            gdown.download(video_url, local_video_path, quiet=False)
-            is_temp_file = True
-            print(f"Video downloaded to temporary path: {local_video_path}")
+            # Download video from URL
+            temp_video_path = os.path.join(temp_dir, "downloaded_video.mp4")
+            gdown.download(video_url, temp_video_path, quiet=False, fuzzy=True)
+            print(f"Video downloaded to temporary path: {temp_video_path}")
 
-        # 3. Check if the video file exists
-        if not os.path.exists(local_video_path):
-            print(f"Error: Video file not found at '{local_video_path}'")
-            return None
+            # Convert video to audio
+            print(f"Converting video to audio...")
+            temp_audio_path = os.path.join(temp_dir, "extracted_audio.mp3")
+            try:
+                video_clip = mp.VideoFileClip(temp_video_path)
+                video_clip.audio.write_audiofile(temp_audio_path, codec='mp3')
+                video_clip.close()
+                print(f"Audio extracted to: {temp_audio_path}")
+                upload_path = temp_audio_path
+            except Exception as e:
+                print(f"Audio extraction failed: {e}. Falling back to video upload.")
+                upload_path = temp_video_path
+        else:
+            upload_path = local_video_path
 
-        # 4. Upload the video file to the Gemini API
-        print(f"Uploading video: {local_video_path}...")
-        video_file = genai.upload_file(path=local_video_path, display_name="Meeting Video")
-        print(f"Completed upload: {video_file.uri}")
-
-        # 5. Wait for the video to be processed
-        while video_file.state.name == "PROCESSING":
-            print("Waiting for video to be processed...")
-            time.sleep(10)
-            video_file = genai.get_file(video_file.name)
-
-        if video_file.state.name == "FAILED":
-            print("Video processing failed.")
-            return None
-
-        # 6. Instantiate the model and generate the transcript with speaker labels
-        print("Generating transcription with speaker labels...")
-        model = genai.GenerativeModel(model_name="gemini-2.5-flash")
-
-        # Updated prompt to request speaker diarization
-        prompt = "Transcribe the audio from this video. Include speaker labels (diarization) for each part of the conversation. For example: 'Speaker 1: Hello there. Speaker 2: Hi, how are you?'"
-
-        # 7. Send the prompt and video file to the model
-        response = model.generate_content([prompt, video_file], request_options={"timeout": 600})
-
-        # 8. Extract and print the transcript
+        # 3. Process the audio file with Gemini
+        print(f"Processing file: {upload_path}...")
+        
+        # Create a model instance
+        model = GenerativeModel("gemini-2.5-flash")
+        
+        # Read the audio file
+        with open(upload_path, "rb") as f:
+            audio_data = f.read()
+        
+        # Create the prompt for transcription
+        prompt = "Transcribe the audio from this file. Include speaker labels (diarization) for each part of the conversation. For example: 'Speaker 1: Hello there. Speaker 2: Hi, how are you?'"
+        
+        # Generate the transcription
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "audio/mp3", "data": audio_data}
+        ])
+        
+        # Extract the transcript
         transcript = response.text
         print("\n--- Transcription ---")
         print(transcript)
         print("---------------------\n")
 
-        # 9. Save the transcript to a JSON file
-        output_dir = os.path.dirname(output_path)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-        output_data = {"transcript": transcript}
-        with open(output_path, 'w') as f:
-            json.dump(output_data, f, indent=2)
-        print(f"Transcript saved to {output_path}")
+        # Save the transcript to the database for the correct user
+        inserted_id = save_transcript(transcript, user_id)
+        print(f"Transcript saved to MongoDB with ID: {inserted_id} for user {user_id}")
+
+        # Clean up temporary files
+        print("Cleaning up temporary files...")
+        if temp_video_path and os.path.exists(temp_video_path):
+            os.remove(temp_video_path)
+        if temp_audio_path and os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+        print("--- ✅ Finished Transcription Agent ---")
 
         return transcript
 
+    # --- MODIFIED: More specific error handling ---
+    except ConnectionFailure as e:
+        print("\n" + "="*50)
+        print("❌ DATABASE CONNECTION FAILED")
+        print(f"   Error: {e}")
+        print("   This is a network-level error. The application could not find the MongoDB server.")
+        print("   Please check:")
+        print("   1. Your computer's internet connection.")
+        print("   2. If a firewall or VPN is blocking the connection to MongoDB Atlas.")
+        print("   3. The MONGO_URI in your backend/.env file is 100% correct.")
+        print("="*50 + "\n")
+        # Re-raise the exception so the API endpoint returns a proper 500 error
+        raise
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
-    finally:
-        # 10. Clean up uploaded and temporary files
-        if video_file:
-            print(f"Deleting uploaded file from Gemini service: {video_file.name}")
-            genai.delete_file(video_file.name)
-        if is_temp_file and local_video_path and os.path.exists(local_video_path):
-            print(f"Deleting temporary local file: {local_video_path}")
-            os.remove(local_video_path)
-
+        print(f"An unexpected error occurred in transcription agent: {e}")
+        # Re-raise for the API endpoint
+        raise
 
 if __name__ == '__main__':
     # --- How to use this script ---
@@ -124,8 +141,5 @@ if __name__ == '__main__':
     video_file_path = None
     video_drive_url = "https://drive.google.com/file/d/1-sample-id-for-a-video/view?usp=sharing" # Replace with a real public video link
 
-    # Define the output path for the transcript
-    output_file_path = "data/transcript_meeting/transcript_meeting.json"
-
     # Call the transcription function
-    transcribe_video(video_path=video_file_path, video_url=video_drive_url, output_path=output_file_path)
+    transcribe_video(video_path=video_file_path, video_url=video_drive_url)
