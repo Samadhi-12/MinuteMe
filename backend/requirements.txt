@@ -6,32 +6,26 @@ uvicorn
 python-dotenv>=1.0.1
 pytest
 
-########################################
 # Data & Time
-dateparser>=1.1.0
-python-dateutil==2.9.0.post0
-pytz==2025.2
-tzdata==2025.2
-six==1.17.0
+dateparser
 
-########################################
 # NLP and ML dependencies
-spacy>=3.7.0
 nltk>=3.8.1
-scikit-learn>=1.3.0
-numpy==2.3.2
-pandas==2.3.2
+scikit-learn
+pandas
 rake_nltk
+transformers
+torch
 
-########################################
-# LLM and AI dependencies
-openai>=1.0.0
-google-generativeai>=0.8.0
-transformers>=4.35.0
-torch>=2.0.0
-
-########################################
 # Google API dependencies
-google-auth-oauthlib
+google-generativeai
 google-api-python-client
-google-auth
+google-auth-httplib2
+google-auth-oauthlib
+gdown
+
+# Database & Auth
+pymongo[srv]==3.12
+clerk-backend-api  # Specify the version to ensure consistency
+
+moviepy==1.0.3

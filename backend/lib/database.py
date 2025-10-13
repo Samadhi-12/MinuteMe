@@ -1,0 +1,166 @@
+import os
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure # Import the exception class
+from bson.objectid import ObjectId # Import the ObjectId class
+from dotenv import load_dotenv
+from datetime import datetime
+
+load_dotenv()  # Load environment variables from .env file
+
+# --- Singleton Pattern for DB Connection ---
+_db_client = None
+
+def get_db():
+    """
+    Establishes a singleton connection to the MongoDB database.
+    Reads MONGO_URI and MONGO_DB from the .env file.
+    """
+    global _db_client
+    if _db_client is None:
+        load_dotenv()
+        mongo_uri = os.getenv("MONGO_URI")
+        mongo_db_name = os.getenv("MONGO_DB")
+        if not mongo_uri or not mongo_db_name:
+            raise ValueError("MONGO_URI and MONGO_DB must be set in your .env file.")
+        
+        try:
+            print("🔌 Establishing new MongoDB connection...")
+            # Add these connection options to bypass some common connection issues
+            client = MongoClient(
+                mongo_uri,
+                serverSelectionTimeoutMS=5000,  # 5 second timeout
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000,
+                retryWrites=True
+            )
+            # The ismaster command is cheap and does not require auth.
+            client.admin.command('ping')  # Use ping instead of ismaster
+            _db_client = client[mongo_db_name]
+            print("✅ MongoDB connection successful.")
+        except ConnectionFailure as e:
+            print(f"❌ MongoDB connection failed: {e}")
+            raise
+    return _db_client
+
+# --- CRUD Functions for Agents ---
+
+def save_agenda(agenda_data: dict, user_id: str):
+    """Saves an agenda document for a specific user."""
+    db = get_db()
+    agenda_data["user_id"] = user_id
+    agenda_data["created_at"] = datetime.utcnow()
+    result = db.agendas.insert_one(agenda_data)
+    
+    # After inserting, the agenda_data dict contains the non-serializable ObjectId.
+    # We need to convert it to a string before returning.
+    if "_id" in agenda_data:
+        agenda_data["_id"] = str(agenda_data["_id"])
+        
+    return agenda_data
+
+def save_minutes(minutes_data: dict, user_id: str):
+    """Saves a meeting minutes document for a specific user."""
+    db = get_db()
+    minutes_data["user_id"] = user_id
+    minutes_data["created_at"] = datetime.utcnow()
+    result = db.minutes.insert_one(minutes_data)
+    return str(result.inserted_id)
+
+def update_minutes_with_action_items(minutes_id: str, action_items: list):
+    """Finds a minutes document by its ID and adds the action items to it."""
+    db = get_db()
+    # Use ObjectId to correctly query the document by its primary key
+    result = db.minutes.update_one(
+        {"_id": ObjectId(minutes_id)},
+        {"$set": {"action_items": action_items, "updated_at": datetime.utcnow()}}
+    )
+    print(f"📝 Updated minutes {minutes_id} with {len(action_items)} action items. Matched: {result.matched_count}")
+    return result.modified_count
+
+def get_latest_minutes(user_id: str):
+    """Retrieves the most recent meeting minutes for a given user."""
+    db = get_db()
+    latest_minutes = db.minutes.find_one(
+        {"user_id": user_id},
+        sort=[("created_at", -1)] # -1 for descending
+    )
+    if latest_minutes and "_id" in latest_minutes:
+        latest_minutes["_id"] = str(latest_minutes["_id"])
+    return latest_minutes
+
+def get_minutes_by_id(minutes_id: str, user_id: str):
+    """Retrieves a specific minutes document by its ID for a given user."""
+    db = get_db()
+    try:
+        minutes_doc = db.minutes.find_one({"_id": ObjectId(minutes_id), "user_id": user_id})
+        if minutes_doc and "_id" in minutes_doc:
+            minutes_doc["_id"] = str(minutes_doc["_id"])
+        return minutes_doc
+    except Exception as e:
+        print(f"Error fetching minutes by ID '{minutes_id}': {e}")
+        return None
+
+def get_agenda(meeting_id: str, user_id: str):
+    """Retrieves a specific agenda for a given user."""
+    db = get_db()
+    agenda = db.agendas.find_one({"meeting_id": meeting_id, "user_id": user_id})
+    if agenda and "_id" in agenda:
+        agenda["_id"] = str(agenda["_id"])
+    return agenda
+
+def save_transcript(transcript_text: str, user_id: str):
+    """Saves a raw transcript for a specific user."""
+    db = get_db()
+    transcript_data = {
+        "user_id": user_id,
+        "transcript": transcript_text,
+        "created_at": datetime.utcnow()
+    }
+    result = db.transcripts.insert_one(transcript_data)
+    return str(result.inserted_id)
+
+def get_latest_transcript(user_id: str):
+    """Retrieves the most recent transcript for a given user."""
+    db = get_db()
+    latest_transcript = db.transcripts.find_one(
+        {"user_id": user_id},
+        sort=[("created_at", -1)]
+    )
+    if latest_transcript and "_id" in latest_transcript:
+        latest_transcript["_id"] = str(latest_transcript["_id"])
+    return latest_transcript
+
+def get_all_agendas_for_user(user_id: str):
+    """Retrieves all agendas for a given user, sorted by most recent."""
+    db = get_db()
+    agendas = list(db.agendas.find({"user_id": user_id}, sort=[("created_at", -1)]))
+    for agenda in agendas:
+        if "_id" in agenda:
+            agenda["_id"] = str(agenda["_id"])
+    return agendas
+
+def get_all_action_items_for_user(user_id: str):
+    """Retrieves all action items from all minutes for a given user."""
+    db = get_db()
+    pipeline = [
+        {"$match": {"user_id": user_id}},
+        {"$unwind": "$action_items"},
+        {"$replaceRoot": {"newRoot": "$action_items"}},
+        {"$sort": {"deadline": 1}}
+    ]
+    action_items = list(db.minutes.aggregate(pipeline))
+    return action_items
+
+def get_all_minutes_for_user(user_id: str):
+    """Retrieves all minutes documents for a given user."""
+    db = get_db()
+    minutes_docs = list(db.minutes.find({"user_id": user_id}))
+    for doc in minutes_docs:
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+    return minutes_docs
+
+def get_document_count(collection_name: str, user_id: str):
+    """Counts documents in a collection for a specific user."""
+    db = get_db()
+    return db[collection_name].count_documents({"user_id": user_id})

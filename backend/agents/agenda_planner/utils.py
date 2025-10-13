@@ -12,6 +12,9 @@ for resource in ['stopwords', 'punkt']:
     except LookupError:
         nltk.download(resource)
 from rake_nltk import Rake
+from lib.database import get_document_count # Import the new DB function
+# Import the service that reads from the DB
+from ..action_item_tracker.previous_minutes_service import read_previous_minutes
 
 # Ensure NLTK stopwords are downloaded
 import nltk
@@ -37,16 +40,11 @@ def save_json(data, file_path):
         json.dump(data, f, indent=4)
 
 
-def get_next_meeting_id(output_dir="data/agendas"):
-    """Generate next meeting ID based on existing files"""
-    files = os.listdir(output_dir) if os.path.exists(output_dir) else []
-    meeting_ids = []
-    for f in files:
-        match = re.match(r"meetingId_(\d+)\.json", f)
-        if match:
-            meeting_ids.append(int(match.group(1)))
-    next_id = max(meeting_ids) + 1 if meeting_ids else 1
-    return f"meetingId_{next_id:02d}"
+def get_next_meeting_id(user_id: str):
+    """Generate next meeting ID based on count in DB for that user."""
+    count = get_document_count("agendas", user_id)
+    next_id = count + 1
+    return f"meetingId_{user_id}_{next_id:02d}"
 
 
 def extract_keywords_tfidf(texts, top_n=5):
@@ -70,22 +68,24 @@ def extract_keywords_rake(text, top_n=5):
     keywords = [phrase for score, phrase in phrases_with_scores[:top_n]]
     return keywords
 
-def get_user_input_if_no_previous_file():
+def get_user_input_if_no_previous_file(user_id: str):
     """
-    Returns user input if previous_meeting/meeting_details.json doesn't exist.
+    Returns user input based on the last meeting's minutes from the database.
     """
-    file_path = "data/previous_meeting/meeting_details.json"
+    # This now correctly reads from the database via the service
+    previous_data = read_previous_minutes(user_id)
     
-    previous_data = load_json(file_path)
     if previous_data:
-        # Use future_discussion & next_meeting_date from file
+        print("🧠 Found previous minutes in DB. Generating topics for next meeting.")
+        # Use future_discussion & next_meeting_date from the DB document
         user_input = {
-            "topics": previous_data.get("future_discussion", []),
-            "discussion_points": previous_data.get("current_discussion", []),
+            "topics": previous_data.get("future_discussion_points", []),
+            "discussion_points": [item.get("task", "") for item in previous_data.get("action_items", [])],
             "date": previous_data.get("next_meeting_date")
         }
     else:
-        # Fallback example (can be replaced by UI input later)
+        # Fallback example if no minutes exist for the user in the DB
+        print("⚠️ No previous minutes in DB. Using default example topics.")
         user_input = {
             "topics": [
                 "Social Media Campaign Review",
@@ -96,6 +96,6 @@ def get_user_input_if_no_previous_file():
                 "Plan upcoming influencer collaborations",
                 "Evaluate content strategy effectiveness"
             ],
-            "date": "2025-09-10"
+            "date": "2025-10-20"
         }
     return user_input
