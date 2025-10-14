@@ -6,10 +6,10 @@ import {
   SignIn,
   SignUp,
   UserButton,
-  useAuth, // Import useAuth
+  useAuth,
 } from "@clerk/clerk-react";
-import { useEffect } from "react"; // Import useEffect
-import { setupAxiosInterceptors } from "./lib/axios"; // Import the setup function
+import { useEffect } from "react";
+import { setupAxiosInterceptors } from "./lib/axios";
 
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
@@ -23,15 +23,21 @@ import Calendar from "./pages/Calendar"; // Import the new Calendar page
 import Transcripts from "./pages/Transcripts";
 import Navbar from "./components/Navbar";
 import Meetings from "./pages/Meetings";
+import AdminDashboard from "./pages/Admin"; // Import the new admin page
 import "./App.css";
 import "./components/UI.css";
 
 function App() {
   const { getToken } = useAuth();
 
-  // Setup Axios interceptor when the component mounts
+  // Setup Axios interceptor when the component mounts with error handling
   useEffect(() => {
-    setupAxiosInterceptors(getToken);
+    if (getToken) {
+      console.log("Setting up axios interceptors with auth token");
+      setupAxiosInterceptors(getToken);
+    } else {
+      console.warn("getToken function not available yet");
+    }
   }, [getToken]);
 
   return (
@@ -141,6 +147,15 @@ function App() {
             element={
               <SignedIn>
                 <Meetings />
+              </SignedIn>
+            }
+          />
+          {/* Add the new Admin route */}
+          <Route
+            path="/admin"
+            element={
+              <SignedIn>
+                <AdminDashboard />
               </SignedIn>
             }
           />

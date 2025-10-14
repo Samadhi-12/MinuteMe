@@ -400,3 +400,17 @@ async def delete_meeting_endpoint(
     if not deleted:
         raise HTTPException(status_code=404, detail="Meeting not found or delete failed.")
     return {"message": "Meeting deleted."}
+
+@app.get("/admin/users")
+async def list_users(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    # Fetch all users from Clerk or your DB
+    # Return user list with metadata
+
+@app.patch("/admin/user/{user_id}/tier")
+async def update_user_tier(user_id: str, tier: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    # Update user's public_metadata in Clerk
+    # Return updated user info

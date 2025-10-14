@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton, useAuth, useUser } from "@clerk/clerk-react";
+import { useUserRole } from "../hooks/useUserRole";
 import "../App.css";
+import { useEffect } from "react";
 
 const navLinks = [
   { to: "/", label: "Dashboard" },
@@ -15,6 +17,27 @@ const navLinks = [
 
 function Navbar() {
   const location = useLocation();
+  const { isAdmin, isLoading } = useUserRole();
+  const { session, isLoaded: isSessionLoaded } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
+
+  // Enhanced debugging
+  useEffect(() => {
+    if (isSessionLoaded && isUserLoaded) {
+      console.log("--- CLERK DEBUG (NAVBAR) ---");
+      console.log("Session loaded:", isSessionLoaded);
+      console.log("Session object:", session);
+      console.log("User loaded:", isUserLoaded);
+      console.log("User object:", user);
+      
+      if (user) {
+        console.log("User public metadata:", user.publicMetadata);
+        console.log("Is Admin:", isAdmin);
+      }
+      console.log("--------------------------");
+    }
+  }, [isSessionLoaded, session, isUserLoaded, user, isAdmin]);
+
   return (
     <nav>
       <div style={{ display: 'flex', alignItems: 'center', gap: '2em' }}>
@@ -34,6 +57,17 @@ function Navbar() {
               </Link>
             </li>
           ))}
+          {/* Show admin link if user is admin and not still loading */}
+          {!isLoading && isAdmin && (
+            <li>
+              <Link
+                to="/admin"
+                className={location.pathname === '/admin' ? 'active' : ''}
+              >
+                Admin
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
       <UserButton afterSignOutUrl="/sign-in" />
