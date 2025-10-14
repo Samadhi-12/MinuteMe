@@ -1,4 +1,4 @@
-/* --- RESET & ROOT VARIABLES --- */
+/* --- UPDATED ROOT VARIABLES --- */
 :root {
   --background-dark: #121212;
   --primary-dark: #1e1e1e;
@@ -6,19 +6,19 @@
   --border-color: #3e3e3e;
   --text-primary: #e0e0e0;
   --text-secondary: #a0a0a0;
-  --accent-blue: #007bff;
-  --accent-blue-hover: #0056b3;
-  --success: #28a745;
-  --warning: #ffc107;
-  --danger: #dc3545;
+  --accent-blue: #3b82f6; /* Updated blue */
+  --accent-blue-hover: #2563eb;
+  --success: #10b981; /* Updated green */
+  --warning: #f59e0b; /* Updated amber */
+  --danger: #ef4444;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --border-radius: 12px;
+  --transition: all 0.2s ease;
 }
 
-html, body, #root, .App {
-  min-height: 100vh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+/* --- GLOBAL STYLES --- */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--background-dark);
   color: var(--text-primary);
 }
@@ -29,6 +29,7 @@ main {
   margin: 0 auto;
   max-width: 1400px;
   width: 100%;
+  box-sizing: border-box; /* This ensures padding doesn't add to width */
 }
 
 h1, h2, h3 {
@@ -86,7 +87,7 @@ nav ul li a.active {
   font-weight: 600;
 }
 
-/* --- DASHBOARD LAYOUT --- */
+/* --- DASHBOARD STYLES --- */
 .dashboard-container {
   display: flex;
   flex-direction: column;
@@ -94,26 +95,147 @@ nav ul li a.active {
 }
 
 .dashboard-header {
-  background: linear-gradient(45deg, var(--accent-blue), #0056b3);
-  padding: 2em;
-  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-blue), #1e40af);
+  border-radius: var(--border-radius);
+  padding: 2.5rem;
+  margin-bottom: 2rem;
   color: white;
 }
 
-.dashboard-header h1 { color: white; }
+.dashboard-header h1 {
+  color: white;
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
 
 .primary-action-btn {
   background-color: white;
   color: var(--accent-blue);
-  font-weight: 700;
-  padding: 0.8em 1.5em;
-  border-radius: 8px;
   border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 .primary-action-btn:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.secondary-action-btn {
+  background-color: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.secondary-action-btn:hover {
+  background-color: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
+
+/* Dashboard stats */
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background-color: var(--primary-dark);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  line-height: 1;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Section headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.view-all {
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.view-all:hover {
+  text-decoration: underline;
+}
+
+/* Meeting cards */
+.meeting-card {
+  margin-bottom: 1rem;
+}
+
+.date-badge {
+  background-color: var(--secondary-dark);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.card-summary {
+  color: var(--text-secondary);
+  margin: 1rem 0;
+  line-height: 1.5;
+}
+
+.action-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+.action-meta .label {
+  font-weight: 500;
+  margin-right: 0.25rem;
 }
 
 .dashboard-main-content {
@@ -125,12 +247,14 @@ nav ul li a.active {
 /* --- CARDS --- */
 .card {
   background-color: var(--primary-dark);
+  border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5em;
-  transition: border-color 0.2s;
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  transition: var(--transition);
 }
 .card:hover {
+  transform: translateY(-2px);
   border-color: var(--accent-blue);
 }
 
@@ -181,6 +305,9 @@ nav ul li a.active {
   padding: 2em;
   border-radius: 12px;
   border: 1px solid var(--border-color);
+  margin-bottom: 2em;
+  width: 100%; /* Ensure full width */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .form-group {
@@ -209,19 +336,15 @@ nav ul li a.active {
 }
 
 .form-submit-btn {
-  width: 100%;
-  padding: 1em;
   background-color: var(--accent-blue);
-  color: white;
-  border: none;
   border-radius: 8px;
-  font-size: 1em;
+  padding: 0.75rem 1.5rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  transition: var(--transition);
 }
 .form-submit-btn:hover {
   background-color: var(--accent-blue-hover);
+  transform: translateY(-1px);
 }
 
 /* --- NEW: Dynamic Form Item Styles --- */
@@ -338,4 +461,35 @@ nav ul li a.active {
   .dashboard-main-content {
     grid-template-columns: 1fr;
   }
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.status-badge.completed { background-color: rgba(16, 185, 129, 0.2); color: var(--success); }
+.status-badge.in-progress { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+.status-badge.pending { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+/* Add more modern layout containers */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Special handling for calendar */
+.calendar-container {
+  height: 80vh;
+  background-color: white;
+  padding: 1em;
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
