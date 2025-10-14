@@ -1,0 +1,183 @@
+/* --- MODERN UI COMPONENTS --- */
+
+/* Page headers */
+.page-header {
+  margin-bottom: 2rem;
+}
+.page-header .subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Loading states */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+.loader {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid var(--accent-blue);
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty states */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+.empty-state h3 {
+  margin: 0 0 0.5rem 0;
+}
+.empty-state p {
+  color: var(--text-secondary);
+  max-width: 300px;
+}
+
+/* Cards */
+.transcript-card .card-header,
+.action-item-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.card-header .date-time {
+  display: flex;
+  flex-direction: column;
+}
+.card-header .date {
+  font-weight: 600;
+}
+.card-header .time {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.time-ago {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.transcript-preview {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* Action items */
+.item-task {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+.item-details {
+  margin-bottom: 1.5rem;
+}
+.item-details .detail {
+  display: flex;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+.item-details .label {
+  color: var(--text-secondary);
+  min-width: 75px;
+}
+.meeting-link {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+.meeting-link:hover {
+  text-decoration: underline;
+}
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  background-color: var(--secondary-dark);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  transition: var(--transition);
+  cursor: pointer;
+}
+.filter-btn.active {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+/* Action buttons */
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.action-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.complete-btn {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+.complete-btn:hover {
+  background-color: var(--success);
+  color: white;
+}
+.progress-btn {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+.progress-btn:hover {
+  background-color: var(--warning);
+  color: white;
+}
+.reopen-btn {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.reopen-btn:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* Messages */
+.message-banner {
+  background-color: var(--secondary-dark);
+  border-left: 4px solid var(--accent-blue);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.25rem;
+}

@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import api from "../lib/axios"; // Use the authenticated api instance
+import api from "../lib/axios";
+import { Link } from "react-router-dom";
+import { format, isPast, parseISO } from "date-fns";
 import "../App.css";
 
 function ActionItems() {
     const [actionItems, setActionItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
+    const [filter, setFilter] = useState("all"); // all, pending, completed
+    
     useEffect(() => {
         fetchActionItems();
     }, []);
@@ -14,17 +17,17 @@ function ActionItems() {
     const fetchActionItems = async () => {
         try {
             setLoading(true);
-            // Use the authenticated api instance and correct endpoint
             const response = await api.get("/action-items");
             const data = response.data;
 
             if (data) {
-                const formattedItems = data.map((item, index) => ({
-                    id: item._id || index + 1, // Prefer a real ID if available
+                const formattedItems = data.map((item) => ({
+                    id: item._id,
                     task: item.task || item.action,
                     owner: item.owner || item.assignee,
                     deadline: item.deadline || item.due_date || "TBD",
                     status: item.status || "pending",
+                    minutes_id: item.minutes_id || null,
                 }));
                 setActionItems(formattedItems);
             }
@@ -37,66 +40,155 @@ function ActionItems() {
     };
 
     const handleStatusChange = async (id, newStatus) => {
-        // This endpoint doesn't exist yet, so we'll just update the local state for now.
-        // In a real app, you would implement a PATCH /action-items/{id} endpoint.
         setActionItems(items =>
             items.map(item =>
                 item.id === id ? { ...item, status: newStatus } : item
             )
         );
     };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "completed": return "#4ade80";
-            case "in-progress": return "#fbbf24";
-            case "pending": return "#ef4444";
-            default: return "#a0aec0";
+    
+    const filteredItems = actionItems.filter(item => {
+        if (filter === "all") return true;
+        return item.status === filter;
+    });
+    
+    const getStatusBadgeClass = (status, deadline) => {
+        if (status === "completed") return "completed";
+        if (status === "in-progress") return "in-progress";
+        
+        // Check if deadline is past
+        if (deadline !== "TBD") {
+            try {
+                const deadlineDate = parseISO(deadline);
+                if (isPast(deadlineDate) && status !== "completed") {
+                    return "overdue";
+                }
+            } catch (e) {
+                // Invalid date format, just use pending
+            }
         }
+        
+        return "pending";
     };
 
-    if (loading) return <div className="action-items-container"><p>Loading action items...</p></div>;
-    if (error) return <div className="action-items-container"><p className="error">{error}</p></div>;
+    if (loading) return (
+        <div className="form-container">
+            <h2>Action Items</h2>
+            <div className="loading-container">
+                <div className="loader"></div>
+                <p>Loading action items...</p>
+            </div>
+        </div>
+    );
+    
+    if (error) return <div className="error-container">{error}</div>;
 
     return (
-        <div className="action-items-container">
-            <h2>Action Items</h2>
-            {actionItems.length > 0 ? (
-                <div className="action-items-list">
-                    {actionItems.map((item) => (
-                        <div key={item.id} className="action-item-card">
-                            <div className="action-item-header">
-                                <h3>{item.task}</h3>
-                                <span 
-                                    className="status-indicator"
-                                    style={{ backgroundColor: getStatusColor(item.status) }}
-                                >
-                                    {item.status}
-                                </span>
+        <div className="form-container">
+            <div className="page-header">
+                <h2>Action Items</h2>
+                <p className="subtitle">Track and manage tasks from your meetings</p>
+            </div>
+            
+            <div className="filter-bar">
+                <button 
+                    className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilter('all')}
+                >
+                    All
+                </button>
+                <button 
+                    className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
+                    onClick={() => setFilter('pending')}
+                >
+                    Pending
+                </button>
+                <button 
+                    className={`filter-btn ${filter === 'in-progress' ? 'active' : ''}`}
+                    onClick={() => setFilter('in-progress')}
+                >
+                    In Progress
+                </button>
+                <button 
+                    className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
+                    onClick={() => setFilter('completed')}
+                >
+                    Completed
+                </button>
+            </div>
+            
+            {filteredItems.length > 0 ? (
+                <div className="grid-container">
+                    {filteredItems.map((item) => {
+                        const statusClass = getStatusBadgeClass(item.status, item.deadline);
+                        
+                        return (
+                            <div key={item.id} className="card action-item-card">
+                                <div className="card-header">
+                                    <span className={`status-badge ${statusClass}`}>
+                                        {item.status === "pending" && statusClass === "overdue" ? "Overdue" : item.status}
+                                    </span>
+                                </div>
+                                
+                                <h3 className="item-task">{item.task}</h3>
+                                
+                                <div className="item-details">
+                                    <div className="detail">
+                                        <span className="label">Assignee:</span> 
+                                        <span className="value">{item.owner}</span>
+                                    </div>
+                                    <div className="detail">
+                                        <span className="label">Due:</span> 
+                                        <span className="value">
+                                            {item.deadline !== "TBD" ? format(new Date(item.deadline), "MMM d, yyyy") : "TBD"}
+                                        </span>
+                                    </div>
+                                    {item.minutes_id && (
+                                        <div className="detail">
+                                            <span className="label">Meeting:</span>
+                                            <Link to={`/minutes/${item.minutes_id}`} className="meeting-link">
+                                                View Meeting
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="card-actions">
+                                    {item.status !== "completed" && (
+                                        <button 
+                                            onClick={() => handleStatusChange(item.id, "completed")}
+                                            className="action-btn complete-btn"
+                                        >
+                                            Mark Complete
+                                        </button>
+                                    )}
+                                    {item.status === "pending" && (
+                                        <button 
+                                            onClick={() => handleStatusChange(item.id, "in-progress")}
+                                            className="action-btn progress-btn"
+                                        >
+                                            Start Progress
+                                        </button>
+                                    )}
+                                    {item.status === "completed" && (
+                                        <button 
+                                            onClick={() => handleStatusChange(item.id, "pending")}
+                                            className="action-btn reopen-btn"
+                                        >
+                                            Reopen
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <div className="action-item-details">
-                                <p><strong>Owner:</strong> {item.owner}</p>
-                                <p><strong>Deadline:</strong> {item.deadline}</p>
-                            </div>
-                            <div className="action-item-buttons">
-                                <button 
-                                    onClick={() => handleStatusChange(item.id, "in-progress")}
-                                    className="status-button in-progress"
-                                >
-                                    Mark In Progress
-                                </button>
-                                <button 
-                                    onClick={() => handleStatusChange(item.id, "completed")}
-                                    className="status-button completed"
-                                >
-                                    Mark Complete
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
-                <p className="no-items">No action items available. Create minutes from Dashboard first.</p>
+                <div className="empty-state">
+                    <div className="empty-icon">✅</div>
+                    <h3>No action items {filter !== "all" ? `with status "${filter}"` : ""}</h3>
+                    <p>Action items will appear here after processing a meeting</p>
+                </div>
             )}
         </div>
     );

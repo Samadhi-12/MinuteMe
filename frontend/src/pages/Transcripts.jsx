@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../lib/axios";
+import { formatDistanceToNow } from "date-fns";
 
 function Transcripts() {
     const [transcripts, setTranscripts] = useState([]);
@@ -31,25 +32,69 @@ function Transcripts() {
         }
     };
 
-    if (loading) return <p>Loading transcripts...</p>;
+    if (loading) return (
+        <div className="form-container">
+            <h2>Transcripts</h2>
+            <div className="loading-container">
+                <div className="loader"></div>
+                <p>Loading transcripts...</p>
+            </div>
+        </div>
+    );
+
+    const formatTranscriptPreview = (text) => {
+        if (!text) return "No transcript content";
+        return text.length > 150 ? `${text.substring(0, 150)}...` : text;
+    };
 
     return (
         <div className="form-container">
-            <h2>Transcripts</h2>
-            {message && <p>{message}</p>}
+            <div className="page-header">
+                <h2>Meeting Transcripts</h2>
+                <p className="subtitle">View and process your meeting recordings</p>
+            </div>
+            
+            {message && <div className="message-banner">{message}</div>}
+            
             {transcripts.length > 0 ? (
-                <div className="card-list">
-                    {transcripts.map((t) => (
-                        <div key={t._id} className="card">
-                            <p>{t.transcript.slice(0, 100)}...</p>
-                            <button onClick={() => handleGenerateMinutes(t._id)} className="form-submit-btn">
-                                Generate Minutes
-                            </button>
-                        </div>
-                    ))}
+                <div className="grid-container">
+                    {transcripts.map((transcript) => {
+                        const createdAt = new Date(transcript.created_at);
+                        
+                        return (
+                            <div key={transcript._id} className="card transcript-card">
+                                <div className="card-header">
+                                    <div className="date-time">
+                                        <div className="date">{createdAt.toLocaleDateString()}</div>
+                                        <div className="time">{createdAt.toLocaleTimeString()}</div>
+                                    </div>
+                                    <span className="time-ago">
+                                        {formatDistanceToNow(createdAt, { addSuffix: true })}
+                                    </span>
+                                </div>
+                                
+                                <div className="transcript-preview">
+                                    {formatTranscriptPreview(transcript.transcript)}
+                                </div>
+                                
+                                <div className="card-actions">
+                                    <button 
+                                        onClick={() => handleGenerateMinutes(transcript._id)} 
+                                        className="form-submit-btn"
+                                    >
+                                        Generate Minutes
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
-                <p>No transcripts found.</p>
+                <div className="empty-state">
+                    <div className="empty-icon">📝</div>
+                    <h3>No transcripts yet</h3>
+                    <p>Upload a meeting recording from the dashboard to get started</p>
+                </div>
             )}
         </div>
     );

@@ -36,7 +36,7 @@ function Calendar() {
     }
 
     return (
-        <div style={{ height: "80vh", backgroundColor: "white", padding: "1em", borderRadius: "12px" }}>
+        <div className="calendar-container">
             <BigCalendar
                 localizer={localizer}
                 events={events}
