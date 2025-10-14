@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import api from "../lib/axios";
+import AgendaForm from "../components/AgendaForm";
 
 function Agenda() {
   const [agendas, setAgendas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [editAgenda, setEditAgenda] = useState(null);
-  const [editForm, setEditForm] = useState({ meeting_name: "", meeting_date: "", agenda: [] });
 
   useEffect(() => {
     async function fetchAgendas() {
@@ -36,31 +36,32 @@ function Agenda() {
 
   const handleEdit = (agenda) => {
     setEditAgenda(agenda);
-    setEditForm({
-      meeting_name: agenda.meeting_name,
-      meeting_date: agenda.meeting_date,
-      agenda: agenda.agenda.map(item => ({ ...item }))
-    });
   };
 
-  const handleEditChange = (idx, field, value) => {
-    setEditForm(form => ({
-      ...form,
-      agenda: form.agenda.map((item, i) => i === idx ? { ...item, [field]: value } : item)
-    }));
-  };
-
-  const handleEditFormChange = (field, value) => {
-    setEditForm(form => ({ ...form, [field]: value }));
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
+  const handleEditSubmit = async (payload, setMessage) => {
     try {
-      await api.patch(`/agenda/${editAgenda.meeting_id}`, editForm);
+      const agendaItems = [
+        ...payload.topics.map(topic => ({
+          topic,
+          priority: "info",
+          time_allocated: "10 mins"
+        })),
+        ...payload.discussion_points.map(point => ({
+          topic: point,
+          priority: "discussion",
+          time_allocated: "10 mins"
+        }))
+      ];
+
+      const updatedAgenda = {
+        meeting_name: payload.meeting_name || "Meeting",
+        meeting_date: payload.date,
+        agenda: agendaItems
+      };
+
+      await api.patch(`/agenda/${editAgenda.meeting_id}`, updatedAgenda);
       setMessage("Agenda updated!");
       setEditAgenda(null);
-      // Refresh agendas
       const response = await api.get("/agendas");
       setAgendas(response.data);
     } catch (err) {
@@ -75,25 +76,50 @@ function Agenda() {
       <h2>My Agendas</h2>
       {message && <p>{message}</p>}
       {agendas.length > 0 ? (
-        <div className="card-list">
+        <div className="grid-container">
           {agendas.map((agenda) => (
-            <div key={agenda.meeting_id} className="card">
-              <h3>{agenda.meeting_name}</h3>
-              <p className="card-date">{agenda.meeting_date}</p>
-              <button 
-                className="form-submit-btn" 
-                style={{marginTop: '1em', width: 'auto', padding: '0.5em 1em'}}
-                onClick={() => handleSchedule(agenda.meeting_id)}
-              >
-                Schedule Meeting
-              </button>
-              <button
-                className="form-submit-btn"
-                style={{marginTop: '1em', marginLeft: '1em', width: 'auto', padding: '0.5em 1em'}}
-                onClick={() => handleEdit(agenda)}
-              >
-                Edit Agenda
-              </button>
+            <div key={agenda.meeting_id} className="card agenda-card">
+              <div className="card-header">
+                <h3>{agenda.meeting_name}</h3>
+                <span className="card-date">{agenda.meeting_date}</span>
+              </div>
+              <div className="agenda-meta">
+                <span className="agenda-count">{agenda.agenda?.length || 0} items</span>
+                <span className="agenda-created">
+                  Created: {agenda.created_at ? new Date(agenda.created_at).toLocaleDateString() : "N/A"}
+                </span>
+              </div>
+              <div className="agenda-items-list">
+                {agenda.agenda?.length > 0 ? (
+                  <ul>
+                    {agenda.agenda.map((item, idx) => (
+                      <li key={idx} className="agenda-item">
+                        <span className="agenda-topic">{item.topic}</span>
+                        <span className={`agenda-priority badge-${item.priority}`}>{item.priority}</span>
+                        <span className="agenda-time">{item.time_allocated}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No agenda items.</p>
+                )}
+              </div>
+              <div className="card-actions">
+                <button 
+                  className="form-submit-btn" 
+                  style={{marginTop: '1em', width: 'auto', padding: '0.5em 1em'}}
+                  onClick={() => handleSchedule(agenda.meeting_id)}
+                >
+                  Schedule Meeting
+                </button>
+                <button
+                  className="form-submit-btn"
+                  style={{marginTop: '1em', marginLeft: '1em', width: 'auto', padding: '0.5em 1em'}}
+                  onClick={() => handleEdit(agenda)}
+                >
+                  Edit Agenda
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -106,53 +132,17 @@ function Agenda() {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>Edit Agenda</h3>
-            <form onSubmit={handleEditSubmit}>
-              <div>
-                <label>Meeting Name</label>
-                <input
-                  type="text"
-                  value={editForm.meeting_name}
-                  onChange={e => handleEditFormChange("meeting_name", e.target.value)}
-                />
-              </div>
-              <div>
-                <label>Meeting Date</label>
-                <input
-                  type="date"
-                  value={editForm.meeting_date}
-                  onChange={e => handleEditFormChange("meeting_date", e.target.value)}
-                />
-              </div>
-              <div>
-                <label>Agenda Items</label>
-                {editForm.agenda.map((item, idx) => (
-                  <div key={idx} style={{marginBottom: "0.5em"}}>
-                    <input
-                      type="text"
-                      value={item.topic}
-                      onChange={e => handleEditChange(idx, "topic", e.target.value)}
-                      placeholder="Topic"
-                    />
-                    <select
-                      value={item.priority}
-                      onChange={e => handleEditChange(idx, "priority", e.target.value)}
-                    >
-                      <option value="urgent">Urgent</option>
-                      <option value="discussion">Discussion</option>
-                      <option value="info">Info</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={item.time_allocated}
-                      onChange={e => handleEditChange(idx, "time_allocated", e.target.value)}
-                      placeholder="Time Allocated"
-                    />
-                  </div>
-                ))}
-              </div>
-              <button type="submit" className="form-submit-btn">Save Changes</button>
-              <button type="button" className="modal-close-btn" onClick={() => setEditAgenda(null)}>Cancel</button>
-            </form>
+            <AgendaForm
+              initialValues={{
+                meeting_name: editAgenda.meeting_name,
+                date: editAgenda.meeting_date,
+                topics: editAgenda.agenda?.map(item => item.topic) || [],
+                discussion_points: editAgenda.agenda?.map(item => item.discussion_point).filter(Boolean) || [],
+              }}
+              mode="edit"
+              onSubmit={handleEditSubmit}
+              onCancel={() => setEditAgenda(null)}
+            />
           </div>
         </div>
       )}

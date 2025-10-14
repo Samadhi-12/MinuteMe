@@ -13,10 +13,16 @@ from lib.database import (
     get_agenda,
     get_all_minutes_for_user,
     get_minutes_by_id,
-    update_agenda
+    update_agenda,
+    save_meeting,
+    get_all_meetings_for_user,
+    update_meeting,
+    delete_meeting
 )
 from agents.action_item_tracker.calendar_service import schedule_action_item
 import dateparser
+from bson import ObjectId
+from datetime import datetime
 
 app = FastAPI()
 
@@ -109,39 +115,44 @@ async def get_minute_detail_endpoint(minutes_id: str, current_user: dict = Depen
 
 @app.get("/events")
 async def get_events_endpoint(current_user: dict = Depends(get_current_user)):
-    """
-    Retrieves all agendas and action items formatted as calendar events.
-    """
     user_id = current_user.get("sub")
-    agendas = get_all_agendas_for_user(user_id)
-    action_items = get_all_action_items_for_user(user_id)
-    
+    meetings = get_all_meetings_for_user(user_id)
+    action_items = get_all_action_items_for_user(user_id)  # <-- Add this
+
     events = []
-    
-    # Process agendas into events
-    for agenda in agendas:
-        event_date = dateparser.parse(agenda.get("meeting_date"))
+
+    # Meetings as events
+    for meeting in meetings:
+        event_date = dateparser.parse(meeting.get("meeting_date"))
         if event_date:
             events.append({
-                "title": agenda.get("meeting_name", "Untitled Meeting"),
+                "title": meeting.get("meeting_name", "Untitled Meeting"),
                 "start": event_date,
                 "end": event_date,
                 "allDay": True,
-                "resource": {"type": "agenda"}
+                "resource": {
+                    "type": "meeting",
+                    "agenda_id": meeting.get("agenda_id")
+                }
             })
-            
-    # Process action items into events
+
+    # Action items as events
     for item in action_items:
         deadline = item.get("deadline")
         if deadline:
             deadline_date = dateparser.parse(deadline)
             if deadline_date:
-                 events.append({
-                    "title": item.get("task", "Untitled Task"),
+                events.append({
+                    "title": f"Action: {item.get('task', 'Task')}",
                     "start": deadline_date,
                     "end": deadline_date,
                     "allDay": True,
-                    "resource": {"type": "action_item", "owner": item.get("owner")}
+                    "resource": {
+                        "type": "action-item",
+                        "owner": item.get("owner"),
+                        "status": item.get("status"),
+                        "minutes_id": item.get("minutes_id")
+                    }
                 })
 
     return events
@@ -151,9 +162,6 @@ async def schedule_agenda_endpoint(
     request_body: dict = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Schedules a meeting in Google Calendar based on an agenda_id.
-    """
     user_id = current_user.get("sub")
     agenda_id = request_body.get("agenda_id")
     if not agenda_id:
@@ -165,14 +173,24 @@ async def schedule_agenda_endpoint(
 
     try:
         description = "\n".join([item['topic'] for item in agenda.get("agenda", [])])
+        # Schedule in Google Calendar
         schedule_action_item(
             task_name=agenda.get("meeting_name"),
             description=description,
             deadline_str=agenda.get("meeting_date"),
             owner="All",
-            duration_minutes=60 # Default duration
+            duration_minutes=60
         )
-        return {"message": "Meeting scheduled successfully in Google Calendar."}
+        # Create meeting document in DB
+        meeting_data = {
+            "meeting_name": agenda.get("meeting_name"),
+            "meeting_date": agenda.get("meeting_date"),
+            "agenda_id": agenda.get("meeting_id"),
+            "status": "scheduled"
+        }
+        from lib.database import save_meeting
+        save_meeting(meeting_data, user_id)
+        return {"message": "Meeting scheduled successfully in Google Calendar and saved in DB."}
     except Exception as e:
         print(f"Error scheduling agenda: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to schedule meeting: {e}")
@@ -183,26 +201,49 @@ async def transcribe_endpoint(
     request_body: dict = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Transcribes a video from a URL for the authenticated user.
-    Expects: {"video_url": "http://..."}
-    """
     try:
         user_id = current_user.get("sub")
         video_url = request_body.get("video_url")
+        meeting_date = request_body.get("meeting_date")
+        meeting_name = request_body.get("meeting_name")
+        meeting_id = request_body.get("meeting_id")
+        
+        print(f"[DEBUG] Transcribe request: user_id={user_id}, meeting_id={meeting_id}, video_url={video_url}")
+
         if not user_id or not video_url:
             raise HTTPException(status_code=400, detail="User ID or video_url missing.")
 
+        db = get_db()
+        # Prevent duplicate transcript for the same meeting
+        if meeting_id:
+            existing = db.transcripts.find_one({"meeting_id": meeting_id, "user_id": user_id})
+            if existing:
+                print(f"[DEBUG] Transcript already exists for meeting {meeting_id}. Aborting new transcription.")
+                existing["_id"] = str(existing["_id"])
+                return {"message": "Transcript already exists for this meeting.", "transcript": existing}
+
         print(f"Authenticated request. Transcribing video for user: {user_id}")
-        # Note: The transcription agent saves the transcript to the DB itself.
-        # We need to pass the user_id to it.
+        # This function should now ONLY return text
         transcript_text = transcribe_video(video_url=video_url, user_id=user_id)
-        if transcript_text:
-            return {"message": "Transcription successful and saved.", "transcript": transcript_text}
-        else:
-            raise HTTPException(status_code=500, detail="Transcription failed.")
+        
+        # This is now the ONLY place the transcript is saved
+        transcript_data = {
+            "user_id": user_id,
+            "transcript": transcript_text,
+            "created_at": datetime.utcnow(),
+            "meeting_date": meeting_date,
+            "meeting_name": meeting_name,
+            "meeting_id": meeting_id
+        }
+        
+        print(f"[DEBUG] Saving transcript for meeting {meeting_id}")
+        result = db.transcripts.insert_one(transcript_data)
+        print(f"[DEBUG] Transcript saved with ID: {result.inserted_id}")
+
+        transcript_data["_id"] = str(result.inserted_id)
+        return {"message": "Transcription successful and saved.", "transcript": transcript_data}
     except Exception as e:
-        print(f"Error during transcription: {e}")
+        print(f"[DEBUG] Error during transcription: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -287,3 +328,75 @@ async def update_agenda_endpoint(
     if not updated_agenda:
         raise HTTPException(status_code=404, detail="Agenda not found or update failed.")
     return updated_agenda
+
+@app.patch("/action-items/{item_id}")
+async def update_action_item_status(
+    item_id: str,
+    update_data: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Updates the status or details of an action item.
+    """
+    user_id = current_user.get("sub")
+    db = get_db()
+    result = db.action_items.update_one(
+        {"_id": ObjectId(item_id), "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Action item not found or update failed.")
+    item = db.action_items.find_one({"_id": ObjectId(item_id), "user_id": user_id})
+    if item and "_id" in item:
+        item["_id"] = str(item["_id"])
+    return item
+
+@app.post("/meetings")
+async def create_meeting_endpoint(
+    meeting_data: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Creates a new meeting for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    meeting = save_meeting(meeting_data, user_id)
+    return meeting
+
+@app.get("/meetings")
+async def get_meetings_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves all meetings for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    meetings = get_all_meetings_for_user(user_id)
+    return meetings
+
+@app.patch("/meetings/{meeting_id}")
+async def update_meeting_endpoint(
+    meeting_id: str,
+    update_data: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Updates an existing meeting for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    updated_meeting = update_meeting(meeting_id, update_data, user_id)
+    if not updated_meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found or update failed.")
+    return updated_meeting
+
+@app.delete("/meetings/{meeting_id}")
+async def delete_meeting_endpoint(
+    meeting_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Deletes a meeting for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    deleted = delete_meeting(meeting_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Meeting not found or delete failed.")
+    return {"message": "Meeting deleted."}

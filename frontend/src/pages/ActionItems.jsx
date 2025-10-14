@@ -40,11 +40,16 @@ function ActionItems() {
     };
 
     const handleStatusChange = async (id, newStatus) => {
-        setActionItems(items =>
-            items.map(item =>
-                item.id === id ? { ...item, status: newStatus } : item
-            )
-        );
+        try {
+            await api.patch(`/action-items/${id}`, { status: newStatus });
+            setActionItems(items =>
+                items.map(item =>
+                    item.id === id ? { ...item, status: newStatus } : item
+                )
+            );
+        } catch (error) {
+            console.error("Failed to update status", error);
+        }
     };
     
     const filteredItems = actionItems.filter(item => {

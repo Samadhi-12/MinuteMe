@@ -5,7 +5,6 @@ import gdown
 from google.generativeai import GenerativeModel
 import google.generativeai as genai
 from dotenv import load_dotenv
-from lib.database import save_transcript
 # --- NEW: Import the specific error class ---
 from pymongo.errors import ConnectionFailure
 import moviepy.editor as mp
@@ -95,12 +94,8 @@ def transcribe_video(video_path: str = None, video_url: str = None, user_id: str
         print(transcript)
         print("---------------------\n")
 
-        # Save the transcript to the database for the correct user
-        inserted_id = save_transcript(transcript, user_id)
-        print(f"Transcript saved to MongoDB with ID: {inserted_id} for user {user_id}")
-
-        # Clean up temporary files
         print("Cleaning up temporary files...")
+        # Clean up temporary files
         if temp_video_path and os.path.exists(temp_video_path):
             os.remove(temp_video_path)
         if temp_audio_path and os.path.exists(temp_audio_path):

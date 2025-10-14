@@ -10,6 +10,7 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
     const navigate = useNavigate(); // Hook for navigation
 
     const handleTranscribe = async () => {
+        console.log(`[DEBUG] Dashboard: Creating meeting and transcribing. Video URL: ${videoUrl}`);
         if (!videoUrl) {
             setMessage("Please enter a valid Google Drive URL.");
             return;
@@ -17,11 +18,27 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
         setStep("transcribing");
         setMessage("Transcribing video... This may take several minutes.");
         try {
-            await api.post("/transcribe", { video_url: videoUrl });
+            const meetingDate = new Date().toISOString().slice(0, 10);
+            const meetingName = `Meeting ${Math.floor(Math.random() * 10000)}`;
+            const meetingRes = await api.post("/meetings", {
+                meeting_name: meetingName,
+                meeting_date: meetingDate,
+                status: "conducted"
+            });
+            console.log("[DEBUG] Meeting created:", meetingRes.data);
+            const meetingId = meetingRes.data._id;
+
+            const transcribeRes = await api.post("/transcribe", {
+                video_url: videoUrl,
+                meeting_date: meetingDate,
+                meeting_name: meetingName,
+                meeting_id: meetingId
+            });
+            console.log("[DEBUG] Transcribe response:", transcribeRes.data);
             setStep("transcribed");
             setMessage("✅ Transcription successful! Ready to generate minutes.");
         } catch (error) {
-            console.error("Transcription failed:", error);
+            console.error("[DEBUG] Transcription failed:", error);
             setStep("initial");
             setMessage(`❌ Transcription failed: ${error.response?.data?.detail || error.message}`);
         }

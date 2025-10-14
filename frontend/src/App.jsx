@@ -22,6 +22,7 @@ import CreateAgenda from "./pages/CreateAgenda";
 import Calendar from "./pages/Calendar"; // Import the new Calendar page
 import Transcripts from "./pages/Transcripts";
 import Navbar from "./components/Navbar";
+import Meetings from "./pages/Meetings";
 import "./App.css";
 import "./components/UI.css";
 
@@ -132,6 +133,14 @@ function App() {
             element={
               <SignedIn>
                 <Transcripts />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/meetings"
+            element={
+              <SignedIn>
+                <Meetings />
               </SignedIn>
             }
           />

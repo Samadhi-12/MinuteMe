@@ -185,3 +185,37 @@ def update_agenda(agenda_id: str, update_data: dict, user_id: str):
     if agenda and "_id" in agenda:
         agenda["_id"] = str(agenda["_id"])
     return agenda
+
+def save_meeting(meeting_data: dict, user_id: str):
+    db = get_db()
+    meeting_data["user_id"] = user_id
+    meeting_data["created_at"] = datetime.utcnow()
+    result = db.meetings.insert_one(meeting_data)
+    meeting_data["_id"] = str(result.inserted_id)
+    return meeting_data
+
+def get_all_meetings_for_user(user_id: str):
+    db = get_db()
+    meetings = list(db.meetings.find({"user_id": user_id}))
+    for meeting in meetings:
+        if "_id" in meeting:
+            meeting["_id"] = str(meeting["_id"])
+    return meetings
+
+def update_meeting(meeting_id: str, update_data: dict, user_id: str):
+    db = get_db()
+    result = db.meetings.update_one(
+        {"_id": ObjectId(meeting_id), "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        return None
+    meeting = db.meetings.find_one({"_id": ObjectId(meeting_id), "user_id": user_id})
+    if meeting and "_id" in meeting:
+        meeting["_id"] = str(meeting["_id"])
+    return meeting
+
+def delete_meeting(meeting_id: str, user_id: str):
+    db = get_db()
+    result = db.meetings.delete_one({"_id": ObjectId(meeting_id), "user_id": user_id})
+    return result.deleted_count
