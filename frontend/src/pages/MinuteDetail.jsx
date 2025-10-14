@@ -67,7 +67,16 @@ function MinuteDetail() {
             <div className="detail-section">
                 <h3>Action Items</h3>
                 {minute.action_items?.length > 0 ? (
-                    <ul>{minute.action_items.map((item, i) => <li key={i}><strong>{item.owner}:</strong> {item.task}</li>)}</ul>
+                    <>
+                        <ul>
+                            {minute.action_items.map((item, i) => (
+                                <li key={i}><strong>{item.owner}:</strong> {item.task}</li>
+                            ))}
+                        </ul>
+                        <button onClick={handleGenerateActions} className="form-submit-btn" style={{marginTop: '1em'}}>
+                            Regenerate & Schedule Action Items
+                        </button>
+                    </>
                 ) : (
                     <>
                         <p>No action items have been generated for this meeting yet.</p>

@@ -139,16 +139,21 @@ def get_all_agendas_for_user(user_id: str):
             agenda["_id"] = str(agenda["_id"])
     return agendas
 
-def get_all_action_items_for_user(user_id: str):
-    """Retrieves all action items from all minutes for a given user."""
+def save_action_item(action_item: dict, user_id: str, minutes_id: str):
     db = get_db()
-    pipeline = [
-        {"$match": {"user_id": user_id}},
-        {"$unwind": "$action_items"},
-        {"$replaceRoot": {"newRoot": "$action_items"}},
-        {"$sort": {"deadline": 1}}
-    ]
-    action_items = list(db.minutes.aggregate(pipeline))
+    action_item["user_id"] = user_id
+    action_item["minutes_id"] = minutes_id
+    action_item["created_at"] = datetime.utcnow()
+    result = db.action_items.insert_one(action_item)
+    action_item["_id"] = str(result.inserted_id)
+    return action_item
+
+def get_all_action_items_for_user(user_id: str):
+    db = get_db()
+    action_items = list(db.action_items.find({"user_id": user_id}))
+    for item in action_items:
+        if "_id" in item:
+            item["_id"] = str(item["_id"])
     return action_items
 
 def get_all_minutes_for_user(user_id: str):
@@ -164,3 +169,19 @@ def get_document_count(collection_name: str, user_id: str):
     """Counts documents in a collection for a specific user."""
     db = get_db()
     return db[collection_name].count_documents({"user_id": user_id})
+
+def update_agenda(agenda_id: str, update_data: dict, user_id: str):
+    db = get_db()
+    print(f"🔎 update_agenda called with agenda_id={agenda_id}, user_id={user_id}")
+    result = db.agendas.update_one(
+        {"meeting_id": agenda_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    print(f"Matched count: {result.matched_count}, Modified count: {result.modified_count}")
+    if result.modified_count == 0:
+        print("❌ No agenda updated. Check meeting_id and user_id.")
+        return None
+    agenda = db.agendas.find_one({"meeting_id": agenda_id, "user_id": user_id})
+    if agenda and "_id" in agenda:
+        agenda["_id"] = str(agenda["_id"])
+    return agenda

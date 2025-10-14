@@ -24,6 +24,7 @@ def get_calendar_service():
     return service
 
 def schedule_action_item(task_name: str, description: str, deadline_str: str, owner: str, duration_minutes: int = 60):
+    print(f"Scheduling Google Calendar event: {task_name}, {deadline_str}, {owner}")
     service = get_calendar_service()
 
     # Parse deadline_str as full datetime (date + time)
