@@ -8,10 +8,19 @@ import nltk
 from datetime import datetime, timedelta
 import dateparser
 # NEW: Import the function to get a specific minutes document
-from lib.database import get_minutes_by_id
+from lib.database import get_minutes_by_id, save_action_item
 
 # The NLTK download logic has been moved to a central setup file (lib/nltk_setup.py)
 # and is run at server startup, so this loop is no longer needed here.
+# Temporary fix: Add download logic here to ensure resources are available.
+for resource in ['punkt', 'averaged_perceptron_tagger', 'maxent_ne_chunker', 'words']:
+    try:
+        # A simple find call is sufficient, the path logic is complex.
+        nltk.data.find(f'tokenizers/{resource}' if resource == 'punkt' else f'taggers/{resource}' if resource == 'averaged_perceptron_tagger' else f'chunkers/{resource}' if resource == 'maxent_ne_chunker' else f'corpora/{resource}')
+    except LookupError:
+        print(f"Downloading NLTK resource: {resource}")
+        nltk.download(resource)
+
 
 def run_action_item_tracker(meeting_text: str):
     # This function is kept as a fallback or for comparison
@@ -150,16 +159,17 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                 )
                 current_start += timedelta(minutes=item_duration)
     
-    # Save action items back to the original minutes document in the DB
+    # Save action items as separate documents
     if minutes_doc and minutes_doc.get("_id"):
-        save_action_items(minutes_doc["_id"], result['action_items'])
+        for item in result['action_items']:
+            save_action_item(item, user_id, minutes_doc["_id"])
 
     # --- NEW: Close the loop by generating the next agenda ---
     if minutes_doc and minutes_doc.get("next_meeting_date"):
         print("\n--- 🔄 Closing the Loop: Generating Next Agenda ---")
         next_meeting_input = {
             "topics": minutes_doc.get("future_discussion_points", ["Review previous action items"]),
-            "discussion_points": [item['task'] for item in result.get('action_items', [])],
+            "discussion_points": [],  # <-- Only future topics, no action items
             "date": minutes_doc.get("next_meeting_date")
         }
         print(f"🗓️  Input for next agenda on date: {next_meeting_input['date']}")

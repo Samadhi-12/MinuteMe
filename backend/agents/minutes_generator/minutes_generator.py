@@ -4,6 +4,7 @@ import nltk
 from transformers import pipeline
 from lib.database import save_minutes, get_latest_transcript
 from datetime import datetime, timedelta
+from bson.objectid import ObjectId
 
 # Ensure NLTK sentence tokenizer is downloaded
 try:
@@ -11,10 +12,15 @@ try:
 except LookupError:
     nltk.download('punkt')
 
-def load_transcript_from_db(user_id: str) -> str:
-    """Loads the latest transcript text for a user from MongoDB."""
-    print(f"📖 Loading latest transcript from DB for user: {user_id}")
-    transcript_doc = get_latest_transcript(user_id)
+def load_transcript_from_db(user_id: str, transcript_id: str = None) -> str:
+    """Loads a transcript text for a user from MongoDB. If transcript_id is provided, loads that specific transcript."""
+    print(f"📖 Loading transcript from DB for user: {user_id}")
+    from lib.database import get_latest_transcript, get_db
+    db = get_db()
+    if transcript_id:
+        transcript_doc = db.transcripts.find_one({"_id": ObjectId(transcript_id), "user_id": user_id})
+    else:
+        transcript_doc = get_latest_transcript(user_id)
     if transcript_doc:
         return transcript_doc.get("transcript", "")
     print("⚠️ No transcript found in DB.")
@@ -55,11 +61,11 @@ def extract_future_topics(text: str) -> list:
     print(f"Found {len(future_topics)} potential future topics.")
     return future_topics
 
-def generate_minutes(user_id: str = "user_placeholder_123"):
+def generate_minutes(user_id: str = "user_placeholder_123", transcript_id: str = None):
     """Main function to generate and save meeting minutes to MongoDB."""
     print("\n--- 🚀 Starting Minutes Generator ---")
     # This now reads from the database instead of a file
-    transcript = load_transcript_from_db(user_id)
+    transcript = load_transcript_from_db(user_id, transcript_id)
     if not transcript:
         print("Aborting: No transcript content to process.")
         return

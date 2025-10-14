@@ -20,6 +20,7 @@ import History from "./pages/History";
 import Settings from "./pages/Settings";
 import CreateAgenda from "./pages/CreateAgenda";
 import Calendar from "./pages/Calendar"; // Import the new Calendar page
+import Transcripts from "./pages/Transcripts";
 import Navbar from "./components/Navbar";
 import "./App.css";
 
@@ -122,6 +123,14 @@ function App() {
             element={
               <SignedIn>
                 <Settings />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/transcripts"
+            element={
+              <SignedIn>
+                <Transcripts />
               </SignedIn>
             }
           />

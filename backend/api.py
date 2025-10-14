@@ -6,7 +6,15 @@ from agents.action_item_tracker.tracker import extract_and_schedule_tasks
 from agents.transcription_agent.transcription_agent import transcribe_video
 from lib.auth import get_current_user
 # MODIFIED: Import new DB functions
-from lib.database import get_all_agendas_for_user, get_all_action_items_for_user, get_agenda, get_all_minutes_for_user, get_minutes_by_id
+from lib.database import (
+    get_db,  # <-- Add this
+    get_all_agendas_for_user,
+    get_all_action_items_for_user,
+    get_agenda,
+    get_all_minutes_for_user,
+    get_minutes_by_id,
+    update_agenda
+)
 from agents.action_item_tracker.calendar_service import schedule_action_item
 import dateparser
 
@@ -198,22 +206,32 @@ async def transcribe_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/transcripts")
+async def get_transcripts_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves all transcripts for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    db = get_db()
+    transcripts = list(db.transcripts.find({"user_id": user_id}))
+    for t in transcripts:
+        t["_id"] = str(t["_id"])
+    return transcripts
+
 @app.post("/generate-minutes")
-async def generate_minutes_endpoint(current_user: dict = Depends(get_current_user)):
+async def generate_minutes_endpoint(request_body: dict = Body(None), current_user: dict = Depends(get_current_user)):
     """
     Generates minutes from the latest transcript for the authenticated user.
     """
     try:
         user_id = current_user.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=400, detail="User ID not found in token.")
-
-        print(f"Authenticated request. Generating minutes for user: {user_id}")
-        minutes_data = generate_minutes(user_id=user_id)
+        transcript_id = request_body.get("transcript_id") if request_body else None
+        # If transcript_id is provided, use it; else use latest
+        minutes_data = generate_minutes(user_id=user_id, transcript_id=transcript_id)
         if not minutes_data:
             raise HTTPException(status_code=404, detail="Failed to generate minutes. No transcript found?")
         
-        # --- FIX: Convert ObjectId fields to strings ---
+        # Convert ObjectId fields to strings
         if "_id" in minutes_data and not isinstance(minutes_data["_id"], str):
             minutes_data["_id"] = str(minutes_data["_id"])
         if "meeting_id" in minutes_data and not isinstance(minutes_data["meeting_id"], str):
@@ -254,4 +272,18 @@ async def generate_action_items_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# The old /process-meeting endpoint is now removed.
+@app.patch("/agenda/{agenda_id}")
+async def update_agenda_endpoint(
+    agenda_id: str,
+    update_data: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Updates an existing agenda for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    # Implement update logic in lib/database.py
+    updated_agenda = update_agenda(agenda_id, update_data, user_id)
+    if not updated_agenda:
+        raise HTTPException(status_code=404, detail="Agenda not found or update failed.")
+    return updated_agenda
