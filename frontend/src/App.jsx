@@ -8,7 +8,7 @@ import {
   UserButton,
   useAuth,
 } from "@clerk/clerk-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { setupAxiosInterceptors } from "./lib/axios";
 import { AutomationProvider } from "./context/AutomationContext";
 import AutomationStatusBar from "./components/AutomationStatusBar";
@@ -27,141 +27,146 @@ import Navbar from "./components/Navbar";
 import Meetings from "./pages/Meetings";
 import AdminDashboard from "./pages/Admin"; // Import the new admin page
 import NotificationCenter from "./components/NotificationCenter";
+import Sidebar from "./components/Sidebar";
+import Upgrade from "./pages/Upgrade";
 import "./App.css";
 import "./components/UI.css";
 
 function App() {
   const { getToken } = useAuth();
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Setup Axios interceptor when the component mounts with error handling
   useEffect(() => {
     if (getToken) {
-      console.log("Setting up axios interceptors with auth token");
       setupAxiosInterceptors(getToken);
-    } else {
-      console.warn("getToken function not available yet");
     }
   }, [getToken]);
 
   return (
     <AutomationProvider>
       <div className="App">
-        <AutomationStatusBar />
-        <header>
-          <SignedIn>
-            <div className="header-container">
-              <Navbar />
-              <NotificationCenter />
-            </div>
-          </SignedIn>
-        </header>
-        <main>
-          <Routes>
-            <Route
-              path="/sign-in/*"
-              element={<SignIn routing="path" path="/sign-in" />}
-            />
-            <Route
-              path="/sign-up/*"
-              element={<SignUp routing="path" path="/sign-up" />}
-            />
-            <Route
-              path="/"
-              element={
-                <>
+        <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+        {/* Remove marginLeft logic here */}
+        <div>
+          <AutomationStatusBar />
+          <header>
+            <SignedIn>
+              <div className="header-container">
+                <Navbar onBrandClick={() => setSidebarVisible(true)} />
+                <NotificationCenter />
+              </div>
+            </SignedIn>
+          </header>
+          <main>
+            <Routes>
+              <Route
+                path="/sign-in/*"
+                element={<SignIn routing="path" path="/sign-in" />}
+              />
+              <Route
+                path="/sign-up/*"
+                element={<SignUp routing="path" path="/sign-up" />}
+              />
+              <Route
+                path="/"
+                element={
+                  <>
+                    <SignedIn>
+                      <Dashboard />
+                    </SignedIn>
+                    <SignedOut>
+                      <RedirectToSignIn />
+                    </SignedOut>
+                  </>
+                }
+              />
+              {/* The /create-agenda route is no longer needed */}
+              <Route
+                path="/agenda"
+                element={
                   <SignedIn>
-                    <Dashboard />
+                    <Agenda />
                   </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
-              }
-            />
-            {/* The /create-agenda route is no longer needed */}
-            <Route
-              path="/agenda"
-              element={
-                <SignedIn>
-                  <Agenda />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/calendar"
-              element={
-                <SignedIn>
-                  <Calendar />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/minutes"
-              element={
-                <SignedIn>
-                  <Minutes />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/minutes/:id" // Add route for specific minute
-              element={
-                <SignedIn>
-                  <MinuteDetail />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/action-items"
-              element={
-                <SignedIn>
-                  <ActionItems />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <SignedIn>
-                  <History />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <SignedIn>
-                  <Settings />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/transcripts"
-              element={
-                <SignedIn>
-                  <Transcripts />
-                </SignedIn>
-              }
-            />
-            <Route
-              path="/meetings"
-              element={
-                <SignedIn>
-                  <Meetings />
-                </SignedIn>
-              }
-            />
-            {/* Add the new Admin route */}
-            <Route
-              path="/admin"
-              element={
-                <SignedIn>
-                  <AdminDashboard />
-                </SignedIn>
-              }
-            />
-          </Routes>
-        </main>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <SignedIn>
+                    <Calendar />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/minutes"
+                element={
+                  <SignedIn>
+                    <Minutes />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/minutes/:id" // Add route for specific minute
+                element={
+                  <SignedIn>
+                    <MinuteDetail />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/action-items"
+                element={
+                  <SignedIn>
+                    <ActionItems />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <SignedIn>
+                    <History />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <SignedIn>
+                    <Settings />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/transcripts"
+                element={
+                  <SignedIn>
+                    <Transcripts />
+                  </SignedIn>
+                }
+              />
+              <Route
+                path="/meetings"
+                element={
+                  <SignedIn>
+                    <Meetings />
+                  </SignedIn>
+                }
+              />
+              {/* Add the new Admin route */}
+              <Route
+                path="/admin"
+                element={
+                  <SignedIn>
+                    <AdminDashboard />
+                  </SignedIn>
+                }
+              />
+              <Route path="/upgrade" element={<SignedIn><Upgrade /></SignedIn>} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </AutomationProvider>
   );

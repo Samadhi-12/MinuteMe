@@ -105,12 +105,17 @@ nav ul li a.active {
 }
 
 .dashboard-header {
-  background-color: var(--accent-blue);
+  background: linear-gradient(135deg, #3b82f6 60%, #2563eb 100%);
   color: white;
   padding: 3rem 2rem;
   border-radius: 1rem;
   text-align: center;
-  /* Removed margin-bottom, gap on parent container will handle spacing */
+  margin-bottom: 2rem;
+  /* IMPORTANT: Reset any properties that could create a stacking context */
+  position: static !important; /* Force to normal flow */
+  z-index: auto !important; /* Reset z-index */
+  transform: none !important; /* Remove any transforms */
+  isolation: auto !important; /* Reset isolation */
 }
 
 .dashboard-header h1 {
@@ -632,3 +637,20 @@ nav ul li a.active {
 .badge-premium { background: #10b981; color: #fff; padding: 2px 8px; border-radius: 8px; }
 .badge-free { background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 8px; }
 .danger { background: #ef4444; color: #fff; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+.upgrade-button {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.5em 1em;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}

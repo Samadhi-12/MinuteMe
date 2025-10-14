@@ -223,3 +223,27 @@ def delete_meeting(meeting_id: str, user_id: str):
     db = get_db()
     result = db.meetings.delete_one({"_id": ObjectId(meeting_id), "user_id": user_id})
     return result.deleted_count
+
+# --- Google OAuth Credential Storage ---
+
+def save_google_credentials(user_id: str, credentials_info: dict):
+    """Saves or updates a user's Google credentials."""
+    db = get_db()
+    db.google_credentials.update_one(
+        {"user_id": user_id},
+        {"$set": {"credentials": credentials_info, "updated_at": datetime.utcnow()}},
+        upsert=True
+    )
+    print(f"Saved Google credentials for user {user_id}")
+
+def get_google_credentials(user_id: str):
+    """Retrieves a user's Google credentials."""
+    db = get_db()
+    return db.google_credentials.find_one({"user_id": user_id})
+
+def delete_google_credentials(user_id: str):
+    """Deletes a user's Google credentials."""
+    db = get_db()
+    result = db.google_credentials.delete_one({"user_id": user_id})
+    print(f"Deleted Google credentials for user {user_id}")
+    return result.deleted_count

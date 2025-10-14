@@ -128,6 +128,7 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                 except Exception:
                     duration = 60
                 schedule_action_item(
+                    user_id=user_id, # Pass user_id
                     task_name=topic,
                     description=f"Agenda topic: {topic}",
                     deadline_str=current_start.strftime("%Y-%m-%d %H:%M"),
@@ -151,6 +152,7 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                 description = f"Action item assigned to {owner}"
                 item_duration = item.get("duration", 60)
                 schedule_action_item(
+                    user_id=user_id, # Pass user_id
                     task_name=task,
                     description=description,
                     deadline_str=current_start.strftime("%Y-%m-%d %H:%M"),

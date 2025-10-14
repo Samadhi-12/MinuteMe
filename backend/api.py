@@ -4,7 +4,7 @@ from agents.agenda_planner.agenda_planner import generate_agenda
 from agents.minutes_generator.minutes_generator import generate_minutes
 from agents.action_item_tracker.tracker import extract_and_schedule_tasks
 from agents.transcription_agent.transcription_agent import transcribe_video, get_video_length
-from agents.action_item_tracker.calendar_service import schedule_action_item
+from agents.action_item_tracker.calendar_service import schedule_action_item, SCOPES
 import dateparser
 from bson import ObjectId
 from datetime import datetime
@@ -22,7 +22,10 @@ from lib.database import (
     get_all_meetings_for_user,
     update_meeting,
     delete_meeting,
-    save_transcript # <-- Import save_transcript
+    save_transcript, # <-- Import save_transcript
+    save_google_credentials,
+    get_google_credentials,
+    delete_google_credentials
 )
 from lib.notifications import (
     get_user_notifications,
@@ -40,6 +43,11 @@ from lib.quota import (
     check_free_tier_limits,
     get_monthly_transcription_count,
 )
+from google_auth_oauthlib.flow import Flow
+from google.auth.transport.requests import Request
+from clerk_backend_api import Clerk 
+# --- ADD THIS IMPORT FOR DETAILED ERROR LOGGING ---
+import traceback
 
 app = FastAPI()
 
@@ -548,20 +556,95 @@ async def list_users(current_user: dict = Depends(get_current_user)):
     # Format users for frontend
     user_list = []
     for u in users:
-        user_list.append({
+        user_data = {
             "id": u.id,
             "first_name": u.first_name,
             "last_name": u.last_name,
-            "email": u.email_addresses[0].email_address if u.email_addresses else "",
+            "email": u.email_addresses[0].email_address if u.email_addresses else "No email",
             "role": u.public_metadata.get("role", "user"),
             "tier": u.public_metadata.get("tier", "free"),
-        })
+        }
+        user_list.append(user_data)
     return user_list
 
 @app.patch("/admin/user/{user_id}/tier")
 async def update_user_tier(user_id: str, tier: str, current_user: dict = Depends(get_current_user)):
+    print(f"--- ⚙️ ADMIN: ATTEMPTING TIER UPDATE ---")
+    print(f"Target User ID: {user_id}, New Tier: {tier}")
+    print(f"Admin User: {current_user.get('sub')}")
+
     if current_user.get("metadata", {}).get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+        print("1. Clerk client initialized.")
+        
+        user_to_update = clerk.users.get(user_id=user_id)
+        print(f"2. Fetched user to update. Current metadata: {user_to_update.public_metadata}")
+        
+        current_metadata = user_to_update.public_metadata or {}
+        current_metadata['tier'] = tier
+        print(f"3. Prepared new metadata for update: {current_metadata}")
+        
+        # Fix: Change update_user to update
+        updated_user = clerk.users.update(user_id=user_id, public_metadata=current_metadata)
+        print(f"4. ✅ Successfully updated user in Clerk. New metadata: {updated_user.public_metadata}")
+        
+        return {"success": True, "user_id": updated_user.id, "new_tier": updated_user.public_metadata.get("tier")}
+    except Exception as e:
+        print(f"❌ FAILED TO UPDATE TIER. Exception: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to update user tier in Clerk: {str(e)}")
+
+@app.patch("/admin/user/{user_id}/role")
+async def update_user_role(user_id: str, role: str, current_user: dict = Depends(get_current_user)):
+    print(f"--- ⚙️ ADMIN: ATTEMPTING ROLE UPDATE ---")
+    print(f"Target User ID: {user_id}, New Role: {role}")
+    print(f"Admin User: {current_user.get('sub')}")
+
+    if current_user.get("metadata", {}).get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+        print("1. Clerk client initialized.")
+
+        user_to_update = clerk.users.get(user_id=user_id)
+        print(f"2. Fetched user to update. Current metadata: {user_to_update.public_metadata}")
+
+        current_metadata = user_to_update.public_metadata or {}
+        current_metadata['role'] = role
+        print(f"3. Prepared new metadata for update: {current_metadata}")
+
+        updated_user = clerk.users.update(user_id=user_id, public_metadata=current_metadata)
+        print(f"4. ✅ Successfully updated user in Clerk. New metadata: {updated_user.public_metadata}")
+        
+        return {"success": True, "user_id": updated_user.id, "new_role": updated_user.public_metadata.get("role")}
+    except Exception as e:
+        # --- MODIFIED: Print the full traceback for detailed debugging ---
+        print(f"❌ FAILED TO UPDATE ROLE. Exception: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to update user role in Clerk: {str(e)}")
+
+
+@app.delete("/admin/user/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Deletes a user from Clerk. This is a permanent action."""
+    if current_user.get("metadata", {}).get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+        deleted_user_response = clerk.users.delete(user_id=user_id)
+        
+        # Optionally, you might want to clean up user-related data from your own database here.
+        # For example: db.meetings.delete_many({"user_id": user_id})
+        
+        return {"success": True, "deleted_user_id": deleted_user_response.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete user from Clerk: {str(e)}")
+
 
 # Replace these notification endpoints
 
@@ -626,3 +709,75 @@ async def get_transcription_quota_endpoint(current_user: dict = Depends(get_curr
     
     _, quota_info = check_free_tier_limits(user_id, "transcription")
     return quota_info
+
+# --- Google Calendar Auth Routes ---
+
+@app.get("/auth/google/url")
+async def get_google_auth_url(current_user: dict = Depends(get_current_user)):
+    """Generates the Google OAuth2 authorization URL."""
+    # --- ADDED: Tier check for this premium feature ---
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    if tier == "free":
+        raise HTTPException(
+            status_code=403,
+            detail="Google Calendar integration is a Premium feature. Please upgrade to connect your calendar."
+        )
+        
+    flow = Flow.from_client_secrets_file(
+        'credentials.json',
+        scopes=SCOPES,
+        redirect_uri="http://localhost:5173/settings" # Redirect to frontend settings page
+    )
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        prompt='consent', # Force prompt for refresh_token
+        include_granted_scopes='true'
+    )
+    return {"authorization_url": authorization_url}
+
+@app.post("/auth/google/exchange")
+async def exchange_google_auth_code(
+    request_body: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Exchanges an authorization code for credentials."""
+    user_id = current_user.get("sub")
+    code = request_body.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code is required.")
+
+    try:
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=SCOPES,
+            redirect_uri="http://localhost:5173/settings"
+        )
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+
+        # Save credentials to the database
+        save_google_credentials(user_id, {
+            'token': creds.token,
+            'refresh_token': creds.refresh_token,
+            'token_uri': creds.token_uri,
+            'client_id': creds.client_id,
+            'client_secret': creds.client_secret,
+            'scopes': creds.scopes
+        })
+        return {"message": "Google Calendar connected successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to exchange code: {str(e)}")
+
+@app.get("/auth/google/status")
+async def get_google_auth_status(current_user: dict = Depends(get_current_user)):
+    """Checks if the user has connected their Google Calendar."""
+    user_id = current_user.get("sub")
+    credentials = get_google_credentials(user_id)
+    return {"is_connected": credentials is not None}
+
+@app.post("/auth/google/disconnect")
+async def disconnect_google_calendar(current_user: dict = Depends(get_current_user)):
+    """Disconnects the user's Google Calendar."""
+    user_id = current_user.get("sub")
+    delete_google_credentials(user_id)
+    return {"message": "Google Calendar disconnected successfully."}
