@@ -23,6 +23,7 @@ from agents.action_item_tracker.calendar_service import schedule_action_item
 import dateparser
 from bson import ObjectId
 from datetime import datetime
+import os
 
 app = FastAPI()
 
@@ -360,6 +361,17 @@ async def create_meeting_endpoint(
     Creates a new meeting for the authenticated user.
     """
     user_id = current_user.get("sub")
+    tier = current_user.get("tier", "free")
+    # Enforce meeting count for free users
+    if tier == "free":
+        from lib.database import get_document_count
+        count = get_document_count("meetings", user_id)
+        if count >= 5:
+            raise HTTPException(status_code=403, detail="Free tier: max 5 meetings per month.")
+        # Enforce meeting length
+        if meeting_data.get("duration", 0) > 15:
+            raise HTTPException(status_code=403, detail="Free tier: max 15 min meetings.")
+    # Proceed as normal for premium
     meeting = save_meeting(meeting_data, user_id)
     return meeting
 
@@ -403,14 +415,28 @@ async def delete_meeting_endpoint(
 
 @app.get("/admin/users")
 async def list_users(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    # Fetch all users from Clerk or your DB
-    # Return user list with metadata
+    print("[/admin/users] current_user:", current_user)
+    if current_user.get("metadata", {}).get("role") != "admin":
+        print("[/admin/users] Forbidden: Not admin")
+        raise HTTPException(status_code=403, detail="Forbidden: Admins only.")
+    # Example: Fetch users from Clerk (replace with your actual logic)
+    from clerk_backend_api import Clerk
+    clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+    users = clerk.users.list()
+    # Format users for frontend
+    user_list = []
+    for u in users:
+        user_list.append({
+            "id": u.id,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "email": u.email_addresses[0].email_address if u.email_addresses else "",
+            "role": u.public_metadata.get("role", "user"),
+            "tier": u.public_metadata.get("tier", "free"),
+        })
+    return user_list
 
 @app.patch("/admin/user/{user_id}/tier")
 async def update_user_tier(user_id: str, tier: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
+    if current_user.get("metadata", {}).get("role") != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
-    # Update user's public_metadata in Clerk
-    # Return updated user info

@@ -614,3 +614,10 @@ nav ul li a.active {
     font-weight: 600;
     box-shadow: 0 2px 8px rgba(59,130,246,0.15);
 }
+
+/* Add to UI.css or your main CSS */
+.badge-admin { background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-user { background: #64748b; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-premium { background: #10b981; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-free { background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.danger { background: #ef4444; color: #fff; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; }
