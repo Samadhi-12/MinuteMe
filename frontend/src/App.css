@@ -29,7 +29,9 @@ main {
   margin: 0 auto;
   max-width: 1400px;
   width: 100%;
-  box-sizing: border-box; /* This ensures padding doesn't add to width */
+  box-sizing: border-box;
+  position: relative; /* Creates a base stacking context for page content */
+  z-index: 1;       /* Ensures it is below the sticky header */
 }
 
 h1, h2, h3 {
@@ -46,14 +48,22 @@ header {
   background-color: var(--primary-dark);
   border-bottom: 1px solid var(--border-color);
   padding: 0 2em;
-  position: sticky;
+  position: sticky; /* Makes the header stick to the top */
   top: 0;
-  z-index: 10;
+  z-index: 1050; /* Ensures it's above page content but below modals */
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0; /* Padding is now on the parent header */
+  height: 60px;
+  background-color: var(--primary-dark);
+  /* No z-index or position needed here anymore */
 }
 
 nav {
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -83,7 +93,7 @@ nav ul li a:hover {
 }
 
 nav ul li a.active {
-  color: var(--text-primary);
+  color: var(--accent-blue);
   font-weight: 600;
 }
 
@@ -91,15 +101,21 @@ nav ul li a.active {
 .dashboard-container {
   display: flex;
   flex-direction: column;
-  gap: 2em;
+  gap: 2rem; /* Adds consistent spacing between all dashboard sections */
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, var(--accent-blue), #1e40af);
-  border-radius: var(--border-radius);
-  padding: 2.5rem;
-  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #3b82f6 60%, #2563eb 100%);
   color: white;
+  padding: 3rem 2rem;
+  border-radius: 1rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  /* IMPORTANT: Reset any properties that could create a stacking context */
+  position: static !important; /* Force to normal flow */
+  z-index: auto !important; /* Reset z-index */
+  transform: none !important; /* Remove any transforms */
+  isolation: auto !important; /* Reset isolation */
 }
 
 .dashboard-header h1 {
@@ -486,10 +502,155 @@ nav ul li a.active {
 
 /* Special handling for calendar */
 .calendar-container {
-  height: 80vh;
-  background-color: white;
-  padding: 1em;
-  border-radius: 12px;
-  width: 100%;
-  box-sizing: border-box;
+    padding: 2em;
+    background: #f8fafc;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(59,130,246,0.08);
+    margin: 2em auto;
+    max-width: 1200px;
+}
+
+/* --- Agenda Card --- */
+.agenda-card {
+  background: linear-gradient(135deg, var(--primary-dark) 80%, var(--accent-blue) 120%);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 2em;
+  margin-bottom: 1.5em;
+  transition: box-shadow 0.2s;
+  border: 1px solid var(--border-color);
+}
+
+.agenda-card:hover {
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-blue);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+}
+
+.card-date {
+  background: var(--secondary-dark);
+  color: var(--accent-blue);
+  padding: 0.3em 1em;
+  border-radius: 999px;
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+.agenda-meta {
+  display: flex;
+  gap: 1em;
+  color: var(--text-secondary);
+  font-size: 0.95em;
+  margin-bottom: 1em;
+}
+
+.agenda-items-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1em 0;
+}
+
+.agenda-item {
+  display: flex;
+  gap: 1em;
+  align-items: center;
+  padding: 0.5em 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.agenda-topic {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.agenda-priority {
+  font-size: 0.85em;
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.badge-urgent { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.badge-discussion { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.badge-info { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+
+.agenda-time {
+  color: var(--text-secondary);
+  font-size: 0.85em;
+  margin-left: auto;
+}
+
+.card-actions {
+  display: flex;
+  gap: 1em;
+  margin-top: 1em;
+}
+
+/* --- NEW: Calendar Styles --- */
+.dark-calendar {
+    background: var(--primary-dark);
+    color: var(--text-primary);
+}
+
+.rbc-calendar,
+.rbc-month-view,
+.rbc-header,
+.rbc-toolbar,
+.rbc-event {
+    background: var(--primary-dark) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.rbc-toolbar button {
+    background: var(--secondary-dark) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.rbc-toolbar button.rbc-active {
+    background: var(--accent-blue) !important;
+    color: #fff !important;
+}
+
+.rbc-date-cell {
+    color: var(--text-secondary) !important;
+}
+
+.rbc-event {
+    border-radius: 8px !important;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+}
+
+/* Add to UI.css or your main CSS */
+.badge-admin { background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-user { background: #64748b; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-premium { background: #10b981; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.badge-free { background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 8px; }
+.danger { background: #ef4444; color: #fff; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+.upgrade-button {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.5em 1em;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
 }

@@ -1,34 +1,64 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import api from "../lib/axios";
 import { formatDistanceToNow } from "date-fns";
+import { useUserRole } from "../hooks/useUserRole";
+import ProcessingModeToggle from "../components/ProcessingModeToggle";
 
 function Transcripts() {
     const [transcripts, setTranscripts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState("");
+    const { isPremium } = useUserRole();
+    const [autoMode, setAutoMode] = useState(false);
+    const [automationQuota, setAutomationQuota] = useState(5);
+    const navigate = useNavigate(); // Initialize navigate
 
     useEffect(() => {
-        async function fetchTranscripts() {
+        async function fetchPageData() {
             try {
                 setLoading(true);
-                const response = await api.get("/transcripts");
-                setTranscripts(response.data);
+                const transcriptsRes = await api.get("/transcripts");
+                setTranscripts(transcriptsRes.data);
+
+                if (!isPremium) {
+                    const quotaRes = await api.get("/user/automation-quota");
+                    setAutomationQuota(quotaRes.data.remaining);
+                }
             } catch (error) {
                 setMessage("Failed to load transcripts.");
             } finally {
                 setLoading(false);
             }
         }
-        fetchTranscripts();
-    }, []);
+        fetchPageData();
+    }, [isPremium]);
 
-    const handleGenerateMinutes = async (transcriptId) => {
-        setMessage("Generating minutes...");
+    const handleGenerateMinutes = async (transcript) => {
+        setMessage(`Processing minutes for ${transcript.meeting_name}...`);
         try {
-            await api.post("/generate-minutes", { transcript_id: transcriptId });
-            setMessage("Minutes generated successfully!");
+            if (autoMode) {
+                // --- AUTOMATED FLOW ---
+                await api.post("/process-automated", { 
+                    transcript_text: transcript.transcript,
+                    meeting_id: transcript.meeting_id 
+                });
+                setMessage("✅ Automation started! You'll get a notification when it's done.");
+
+            } else {
+                // --- MANUAL FLOW ---
+                const response = await api.post("/generate-minutes", { transcript_id: transcript._id });
+                const newMinutesId = response.data._id;
+                if (newMinutesId) {
+                    setMessage("Minutes generated successfully! Navigating...");
+                    navigate(`/minutes/${newMinutesId}`); // Navigate to the new minute
+                } else {
+                    setMessage("Error: Could not get ID for new minutes.");
+                }
+            }
         } catch (error) {
-            setMessage("Error generating minutes.");
+            const errorDetail = error.response?.data?.detail || "An unknown error occurred.";
+            setMessage(`❌ Error: ${errorDetail}`);
         }
     };
 
@@ -55,6 +85,13 @@ function Transcripts() {
             </div>
             
             {message && <div className="message-banner">{message}</div>}
+
+            <ProcessingModeToggle 
+                autoMode={autoMode}
+                setAutoMode={setAutoMode}
+                isPremium={isPremium}
+                automationQuota={automationQuota}
+            />
             
             {transcripts.length > 0 ? (
                 <div className="grid-container">
@@ -79,10 +116,10 @@ function Transcripts() {
                                 
                                 <div className="card-actions">
                                     <button 
-                                        onClick={() => handleGenerateMinutes(transcript._id)} 
+                                        onClick={() => handleGenerateMinutes(transcript)} 
                                         className="form-submit-btn"
                                     >
-                                        Generate Minutes
+                                        {autoMode ? "🚀 Start Automation" : "Generate Minutes"}
                                     </button>
                                 </div>
                             </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 function AgendaForm({ initialValues, onSubmit, mode = "create", onCancel }) {
+    const [meetingName, setMeetingName] = useState(initialValues.meeting_name || "");
     const [date, setDate] = useState(initialValues.date || "");
     const [topics, setTopics] = useState(
         initialValues.topics?.length
@@ -34,6 +35,7 @@ function AgendaForm({ initialValues, onSubmit, mode = "create", onCancel }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const payload = {
+            meeting_name: meetingName,
             topics: topics.map((t) => t.value).filter(Boolean),
             discussion_points: discussionPoints.map((dp) => dp.value).filter(Boolean),
             date: date,
@@ -50,6 +52,17 @@ function AgendaForm({ initialValues, onSubmit, mode = "create", onCancel }) {
     return (
         <form onSubmit={handleSubmit}>
             {message && <p>{message}</p>}
+            <div className="form-group">
+                <label htmlFor="meetingName">Meeting Name</label>
+                <input
+                    id="meetingName"
+                    type="text"
+                    value={meetingName}
+                    onChange={(e) => setMeetingName(e.target.value)}
+                    placeholder="Enter meeting name"
+                    required
+                />
+            </div>
             <div className="form-group">
                 <label htmlFor="date">Meeting Date</label>
                 <input

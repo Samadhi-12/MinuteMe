@@ -10,13 +10,19 @@ const api = axios.create({
 export const setupAxiosInterceptors = (getAuthToken) => {
     api.interceptors.request.use(
         async (config) => {
-            const token = await getAuthToken();
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
+            try {
+                const token = await getAuthToken();
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                    console.log("Added auth token to request");
+                }
+            } catch (err) {
+                console.error("Failed to get auth token:", err);
             }
             return config;
         },
         (error) => {
+            console.error("Request interceptor error:", error);
             return Promise.reject(error);
         }
     );

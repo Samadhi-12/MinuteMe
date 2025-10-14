@@ -5,27 +5,49 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import dateparser
+from lib.database import get_google_credentials, save_google_credentials
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-def get_calendar_service():
-    creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-    service = build('calendar', 'v3', credentials=creds)
-    return service
+def get_calendar_service(user_id: str):
+    """
+    Builds a user-specific Google Calendar service object.
+    It fetches credentials from the database for the given user_id.
+    """
+    creds_info = get_google_credentials(user_id)
+    if not creds_info or "credentials" not in creds_info:
+        print(f"No Google credentials found for user {user_id}")
+        return None
 
-def schedule_action_item(task_name: str, description: str, deadline_str: str, owner: str, duration_minutes: int = 60):
-    print(f"Scheduling Google Calendar event: {task_name}, {deadline_str}, {owner}")
-    service = get_calendar_service()
+    creds = Credentials.from_authorized_user_info(creds_info["credentials"], SCOPES)
+
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
+            print(f"Refreshing expired token for user {user_id}")
+            creds.refresh(Request())
+            # Save the refreshed credentials back to the database
+            save_google_credentials(user_id, {
+                'token': creds.token,
+                'refresh_token': creds.refresh_token,
+                'token_uri': creds.token_uri,
+                'client_id': creds.client_id,
+                'client_secret': creds.client_secret,
+                'scopes': creds.scopes
+            })
+        else:
+            # This case should ideally trigger a re-authentication flow
+            print(f"Credentials for user {user_id} are invalid and cannot be refreshed.")
+            return None
+            
+    return build('calendar', 'v3', credentials=creds)
+
+def schedule_action_item(user_id: str, task_name: str, description: str, deadline_str: str, owner: str, duration_minutes: int = 60):
+    print(f"Scheduling Google Calendar event for user {user_id}: {task_name}")
+    service = get_calendar_service(user_id)
+    
+    if not service:
+        print(f"Cannot schedule event for user {user_id}, calendar service not available.")
+        return None
 
     # Parse deadline_str as full datetime (date + time)
     deadline = dateparser.parse(deadline_str, settings={'PREFER_DATES_FROM': 'future'})

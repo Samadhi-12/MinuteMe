@@ -5,7 +5,6 @@ import gdown
 from google.generativeai import GenerativeModel
 import google.generativeai as genai
 from dotenv import load_dotenv
-from lib.database import save_transcript
 # --- NEW: Import the specific error class ---
 from pymongo.errors import ConnectionFailure
 import moviepy.editor as mp
@@ -95,12 +94,8 @@ def transcribe_video(video_path: str = None, video_url: str = None, user_id: str
         print(transcript)
         print("---------------------\n")
 
-        # Save the transcript to the database for the correct user
-        inserted_id = save_transcript(transcript, user_id)
-        print(f"Transcript saved to MongoDB with ID: {inserted_id} for user {user_id}")
-
-        # Clean up temporary files
         print("Cleaning up temporary files...")
+        # Clean up temporary files
         if temp_video_path and os.path.exists(temp_video_path):
             os.remove(temp_video_path)
         if temp_audio_path and os.path.exists(temp_audio_path):
@@ -126,6 +121,47 @@ def transcribe_video(video_path: str = None, video_url: str = None, user_id: str
         print(f"An unexpected error occurred in transcription agent: {e}")
         # Re-raise for the API endpoint
         raise
+
+async def get_video_length(video_url: str) -> float:
+    """
+    Gets the length of a video in minutes from a URL.
+    
+    This function checks if the URL contains length information or uses
+    a default value for testing. In production, this should be replaced
+    with actual video length detection.
+    
+    Args:
+        video_url: URL to the video file
+    
+    Returns:
+        Float representing video length in minutes
+    """
+    try:
+        # Option 1: Check if the URL contains length information (as a query parameter)
+        import re
+        
+        length_match = re.search(r"length=(\d+)", video_url)
+        if length_match:
+            # Length parameter is present in the URL
+            return float(length_match.group(1))
+        
+        # Option 2: For development/testing, you can add special prefixes to test different lengths
+        if video_url.startswith("test:short:"):
+            return 10.0  # 10 minute video (within free tier)
+        elif video_url.startswith("test:long:"):
+            return 20.0  # 20 minute video (exceeds free tier)
+            
+        # Option 3: In a production implementation, you would:
+        # - For Google Drive: Use Drive API to get metadata
+        # - For direct uploads: Use ffmpeg or moviepy to check duration
+        
+        print(f"[INFO] Estimating video length for {video_url}")
+        return 10.0  # Default to 10 minutes for testing
+        
+    except Exception as e:
+        print(f"Error determining video length: {e}")
+        # Default to a safe value for development
+        return 10.0
 
 if __name__ == '__main__':
     # --- How to use this script ---
