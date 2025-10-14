@@ -2,18 +2,20 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../lib/axios";
 import { useUserRole } from "../hooks/useUserRole";
+import { useAutomation } from "../context/AutomationContext"; // Import automation context
 import "../App.css";
 
-function AnalyzeMeetingModal({ isOpen, onClose }) {
+function AnalyzeMeetingModal({ isOpen, onClose, autoMode }) { // Receive autoMode prop
     const [videoUrl, setVideoUrl] = useState("");
     const [manualTranscript, setManualTranscript] = useState("");
     const [step, setStep] = useState("initial");
     const [message, setMessage] = useState("");
     const [transcriptionQuota, setTranscriptionQuota] = useState(5);
     const [quotaLoading, setQuotaLoading] = useState(true);
-    const [newMinutesId, setNewMinutesId] = useState(null); // <-- Add this state
+    const [newMinutesId, setNewMinutesId] = useState(null);
     const navigate = useNavigate();
     const { isPremium } = useUserRole();
+    const { startAutomation } = useAutomation(); // Get startAutomation function
     
     // Fetch transcription quota on component mount
     useEffect(() => {
@@ -38,85 +40,64 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
         }
     };
 
-    const handleTranscribe = async () => {
-        if (!videoUrl) {
-            setMessage("Please enter a valid Google Drive URL.");
-            return;
-        }
-        
-        // Check video transcription quota for free users
-        if (!isPremium && transcriptionQuota <= 0) {
-            setMessage("You've used all your video transcriptions this month. Please use manual transcript entry or upgrade.");
-            return;
-        }
-        
-        setStep("transcribing");
-        setMessage("Creating meeting and transcribing video... This may take several minutes.");
-        try {
-            const meetingDate = new Date().toISOString().slice(0, 10);
-            const meetingName = `Meeting from Video ${new Date().toLocaleTimeString()}`;
-            const meetingRes = await api.post("/meetings", {
-                meeting_name: meetingName,
-                meeting_date: meetingDate,
-                status: "conducted"
-            });
-            const meetingId = meetingRes.data._id;
+    const handleUniversalSubmit = async (isManual = false) => {
+        const meetingDate = new Date().toISOString().slice(0, 10);
+        const meetingName = isManual 
+            ? `Meeting from Transcript ${new Date().toLocaleTimeString()}`
+            : `Meeting from Video ${new Date().toLocaleTimeString()}`;
 
-            await api.post("/transcribe", {
-                video_url: videoUrl,
-                meeting_date: meetingDate,
-                meeting_name: meetingName,
-                meeting_id: meetingId
-            });
-            
-            // If successful, decrement local quota count for UI feedback
-            if (!isPremium) {
-                setTranscriptionQuota(prev => Math.max(0, prev - 1));
-            }
-            
-            setStep("transcribed");
-            setMessage("✅ Transcription successful! Ready to generate minutes.");
-        } catch (error) {
-            console.error("[DEBUG] Transcription failed:", error);
-            setStep("initial");
-            setMessage(`❌ Transcription failed: ${error.response?.data?.detail || error.message}`);
-        }
-    };
-    
-    const handleManualSubmit = async () => {
-        if (!manualTranscript || manualTranscript.length < 50) {
-            setMessage("Please enter a valid transcript (minimum 50 characters).");
-            return;
-        }
-        
-        setStep("processing");
-        setMessage("Creating meeting and saving transcript...");
         try {
-            const meetingDate = new Date().toISOString().slice(0, 10);
-            const meetingName = `Meeting from Transcript ${new Date().toLocaleTimeString()}`;
-            
+            // Step 1: Create a meeting record first
             const meetingRes = await api.post("/meetings", {
                 meeting_name: meetingName,
                 meeting_date: meetingDate,
                 status: "conducted",
-                manual_transcript: true
             });
-            
-            // This should be a new endpoint to save a manual transcript
-            await api.post("/save-manual-transcript", {
-                transcript: manualTranscript,
-                meeting_id: meetingRes.data._id,
-                meeting_name: meetingName,
-                meeting_date: meetingDate
-            });
-            
-            setStep("transcribed"); // Go to the same next step as video transcription
-            setMessage("✅ Transcript saved! Ready to generate minutes.");
+            const meetingId = meetingRes.data._id;
+
+            if (autoMode) {
+                // --- AUTOMATED FLOW ---
+                const payload = { meeting_id: meetingId };
+                if (isManual) {
+                    payload.transcript_text = manualTranscript;
+                } else {
+                    payload.video_url = videoUrl;
+                }
+                await api.post("/process-automated", payload);
+                startAutomation(meetingId, "🚀 Automation process started...");
+                handleClose(); // Close the modal immediately
+            } else {
+                // --- MANUAL FLOW ---
+                if (isManual) {
+                    await handleManualSubmit(meetingId, meetingName, meetingDate);
+                } else {
+                    await handleTranscribe(meetingId, meetingName, meetingDate);
+                }
+            }
         } catch (error) {
             console.error("Processing failed:", error);
             setStep("initial");
             setMessage(`❌ Processing failed: ${error.response?.data?.detail || error.message}`);
         }
+    };
+
+    const handleTranscribe = async (meetingId, meetingName, meetingDate) => {
+        // ... (this is now part of the manual flow)
+        setStep("transcribing");
+        setMessage("Transcribing video...");
+        await api.post("/transcribe", { video_url: videoUrl, meeting_id: meetingId, meeting_name: meetingName, meeting_date: meetingDate });
+        if (!isPremium) setTranscriptionQuota(prev => Math.max(0, prev - 1));
+        setStep("transcribed");
+        setMessage("✅ Transcription successful! Ready to generate minutes.");
+    };
+    
+    const handleManualSubmit = async (meetingId, meetingName, meetingDate) => {
+        // ... (this is now part of the manual flow)
+        setStep("processing");
+        setMessage("Saving transcript...");
+        await api.post("/save-manual-transcript", { transcript: manualTranscript, meeting_id: meetingId, meeting_name: meetingName, meeting_date: meetingDate });
+        setStep("transcribed");
+        setMessage("✅ Transcript saved! Ready to generate minutes.");
     };
 
     const handleGenerateMinutes = async () => {
@@ -188,11 +169,11 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
                                     disabled={!isPremium && transcriptionQuota <= 0}
                                 />
                                 <button 
-                                    onClick={handleTranscribe} 
+                                    onClick={() => handleUniversalSubmit(false)} 
                                     className="form-submit-btn"
                                     disabled={!isPremium && transcriptionQuota <= 0}
                                 >
-                                    Transcribe Video
+                                    {autoMode ? "🚀 Start Automation" : "Transcribe Video"}
                                 </button>
                             </div>
                         </div>
@@ -211,8 +192,8 @@ function AnalyzeMeetingModal({ isOpen, onClose }) {
                                     placeholder="Paste or type meeting transcript here..."
                                     rows="8"
                                 />
-                                <button onClick={handleManualSubmit} className="form-submit-btn">
-                                    Process Transcript
+                                <button onClick={() => handleUniversalSubmit(true)} className="form-submit-btn">
+                                    {autoMode ? "🚀 Start Automation" : "Process Transcript"}
                                 </button>
                             </div>
                         </div>

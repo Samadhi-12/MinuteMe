@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body, Depends, HTTPException
+from fastapi import FastAPI, Body, Depends, HTTPException, BackgroundTasks # Import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from agents.agenda_planner.agenda_planner import generate_agenda
 from agents.minutes_generator.minutes_generator import generate_minutes
@@ -30,7 +30,8 @@ from lib.notifications import (
     mark_notification_read,
     create_notification,
     update_notification_email_status,
-    send_email_notification
+    send_email_notification,
+    AutomationNotifier # Import the new notifier class
 )
 from lib.quota import (
     get_monthly_meeting_count,
@@ -50,6 +51,87 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# +++ AUTOMATION FLOW +++
+def run_full_automation_flow(user_id: str, meeting_id: str, video_url: str = None, transcript_text: str = None):
+    """
+    This function runs in the background. It orchestrates the entire agent chain.
+    """
+    notifier = AutomationNotifier(user_id, meeting_id)
+    try:
+        print(f"🤖 [Auto-Flow] Starting for user {user_id}, meeting {meeting_id}")
+        notifier.start()
+
+        # --- Step 1: Transcription (if needed) ---
+        if video_url:
+            notifier.step_transcribe()
+            print(f"🤖 [Auto-Flow] Step 1: Transcribing video...")
+            transcript_text = transcribe_video(video_url=video_url, user_id=user_id)
+            if not transcript_text:
+                raise ValueError("Transcription failed to produce text.")
+            save_transcript(transcript_text, user_id, meeting_id, f"Meeting {meeting_id}", str(datetime.utcnow().date()), automated=True)
+            print(f"🤖 [Auto-Flow] Step 1 Complete: Transcription saved.")
+
+        # --- Step 2: Generate Minutes ---
+        notifier.step_minutes()
+        print(f"🤖 [Auto-Flow] Step 2: Generating minutes...")
+        minutes_data = generate_minutes(user_id=user_id, transcript_text=transcript_text)
+        if not minutes_data or not minutes_data.get("_id"):
+            raise ValueError("Minutes generation failed.")
+        minutes_id = minutes_data["_id"]
+        print(f"🤖 [Auto-Flow] Step 2 Complete: Minutes generated with ID {minutes_id}.")
+
+        # --- Step 3: Generate Action Items ---
+        notifier.step_actions()
+        print(f"🤖 [Auto-Flow] Step 3: Extracting action items...")
+        extract_and_schedule_tasks(user_id=user_id, minutes_id=minutes_id)
+        print(f"🤖 [Auto-Flow] Step 3 Complete: Action items extracted and scheduled.")
+
+        # --- Final Step: Increment Quota & Notify ---
+        increment_automation_cycle(meeting_id, user_id)
+        notifier.success()
+        print(f"🤖 [Auto-Flow] Success for user {user_id}, meeting {meeting_id}")
+
+    except Exception as e:
+        error_reason = str(e)
+        print(f"🤖❌ [Auto-Flow] FAILED for user {user_id}, meeting {meeting_id}. Reason: {error_reason}")
+        notifier.error(error_reason)
+
+@app.post("/process-automated")
+async def process_automated_endpoint(
+    background_tasks: BackgroundTasks,
+    request_body: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Triggers the full, end-to-end automated processing for a meeting.
+    Accepts either a video_url or transcript_text.
+    """
+    user_id = current_user.get("sub")
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    
+    # --- Quota Check for Free Users ---
+    if tier == "free":
+        exceeded, quota_info = check_free_tier_limits(user_id, "automation")
+        if exceeded:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You have used all {quota_info['limit']} of your automation cycles for this month. Upgrade to Premium for unlimited automations."
+            )
+
+    video_url = request_body.get("video_url")
+    transcript_text = request_body.get("transcript_text")
+    meeting_id = request_body.get("meeting_id")
+
+    if not meeting_id or (not video_url and not transcript_text):
+        raise HTTPException(status_code=400, detail="meeting_id and either video_url or transcript_text are required.")
+
+    # Add the long-running task to the background
+    background_tasks.add_task(run_full_automation_flow, user_id, meeting_id, video_url, transcript_text)
+
+    # Immediately return a response to the user
+    return {"message": "Automation process started. You will receive a notification upon completion."}
+
 
 # --- ROUTES ---
 

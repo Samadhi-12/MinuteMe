@@ -10,6 +10,8 @@ import {
 } from "@clerk/clerk-react";
 import { useEffect } from "react";
 import { setupAxiosInterceptors } from "./lib/axios";
+import { AutomationProvider } from "./context/AutomationContext";
+import AutomationStatusBar from "./components/AutomationStatusBar";
 
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
@@ -42,123 +44,126 @@ function App() {
   }, [getToken]);
 
   return (
-    <div className="App">
-      <header>
-        <SignedIn>
-          <div className="header-container">
-            <Navbar />
-            <NotificationCenter />
-          </div>
-        </SignedIn>
-      </header>
-      <main>
-        <Routes>
-          <Route
-            path="/sign-in/*"
-            element={<SignIn routing="path" path="/sign-in" />}
-          />
-          <Route
-            path="/sign-up/*"
-            element={<SignUp routing="path" path="/sign-up" />}
-          />
-          <Route
-            path="/"
-            element={
-              <>
+    <AutomationProvider>
+      <div className="App">
+        <AutomationStatusBar />
+        <header>
+          <SignedIn>
+            <div className="header-container">
+              <Navbar />
+              <NotificationCenter />
+            </div>
+          </SignedIn>
+        </header>
+        <main>
+          <Routes>
+            <Route
+              path="/sign-in/*"
+              element={<SignIn routing="path" path="/sign-in" />}
+            />
+            <Route
+              path="/sign-up/*"
+              element={<SignUp routing="path" path="/sign-up" />}
+            />
+            <Route
+              path="/"
+              element={
+                <>
+                  <SignedIn>
+                    <Dashboard />
+                  </SignedIn>
+                  <SignedOut>
+                    <RedirectToSignIn />
+                  </SignedOut>
+                </>
+              }
+            />
+            {/* The /create-agenda route is no longer needed */}
+            <Route
+              path="/agenda"
+              element={
                 <SignedIn>
-                  <Dashboard />
+                  <Agenda />
                 </SignedIn>
-                <SignedOut>
-                  <RedirectToSignIn />
-                </SignedOut>
-              </>
-            }
-          />
-          {/* The /create-agenda route is no longer needed */}
-          <Route
-            path="/agenda"
-            element={
-              <SignedIn>
-                <Agenda />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <SignedIn>
-                <Calendar />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/minutes"
-            element={
-              <SignedIn>
-                <Minutes />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/minutes/:id" // Add route for specific minute
-            element={
-              <SignedIn>
-                <MinuteDetail />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/action-items"
-            element={
-              <SignedIn>
-                <ActionItems />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <SignedIn>
-                <History />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <SignedIn>
-                <Settings />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/transcripts"
-            element={
-              <SignedIn>
-                <Transcripts />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/meetings"
-            element={
-              <SignedIn>
-                <Meetings />
-              </SignedIn>
-            }
-          />
-          {/* Add the new Admin route */}
-          <Route
-            path="/admin"
-            element={
-              <SignedIn>
-                <AdminDashboard />
-              </SignedIn>
-            }
-          />
-        </Routes>
-      </main>
-    </div>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <SignedIn>
+                  <Calendar />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/minutes"
+              element={
+                <SignedIn>
+                  <Minutes />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/minutes/:id" // Add route for specific minute
+              element={
+                <SignedIn>
+                  <MinuteDetail />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/action-items"
+              element={
+                <SignedIn>
+                  <ActionItems />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <SignedIn>
+                  <History />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <SignedIn>
+                  <Settings />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/transcripts"
+              element={
+                <SignedIn>
+                  <Transcripts />
+                </SignedIn>
+              }
+            />
+            <Route
+              path="/meetings"
+              element={
+                <SignedIn>
+                  <Meetings />
+                </SignedIn>
+              }
+            />
+            {/* Add the new Admin route */}
+            <Route
+              path="/admin"
+              element={
+                <SignedIn>
+                  <AdminDashboard />
+                </SignedIn>
+              }
+            />
+          </Routes>
+        </main>
+      </div>
+    </AutomationProvider>
   );
 }
 

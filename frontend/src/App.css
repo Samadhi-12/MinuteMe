@@ -29,7 +29,9 @@ main {
   margin: 0 auto;
   max-width: 1400px;
   width: 100%;
-  box-sizing: border-box; /* This ensures padding doesn't add to width */
+  box-sizing: border-box;
+  position: relative; /* Creates a base stacking context for page content */
+  z-index: 1;       /* Ensures it is below the sticky header */
 }
 
 h1, h2, h3 {
@@ -46,14 +48,22 @@ header {
   background-color: var(--primary-dark);
   border-bottom: 1px solid var(--border-color);
   padding: 0 2em;
-  position: sticky;
+  position: sticky; /* Makes the header stick to the top */
   top: 0;
-  z-index: 10;
+  z-index: 1050; /* Ensures it's above page content but below modals */
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0; /* Padding is now on the parent header */
+  height: 60px;
+  background-color: var(--primary-dark);
+  /* No z-index or position needed here anymore */
 }
 
 nav {
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -83,7 +93,7 @@ nav ul li a:hover {
 }
 
 nav ul li a.active {
-  color: var(--text-primary);
+  color: var(--accent-blue);
   font-weight: 600;
 }
 
@@ -91,15 +101,16 @@ nav ul li a.active {
 .dashboard-container {
   display: flex;
   flex-direction: column;
-  gap: 2em;
+  gap: 2rem; /* Adds consistent spacing between all dashboard sections */
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, var(--accent-blue), #1e40af);
-  border-radius: var(--border-radius);
-  padding: 2.5rem;
-  margin-bottom: 2rem;
+  background-color: var(--accent-blue);
   color: white;
+  padding: 3rem 2rem;
+  border-radius: 1rem;
+  text-align: center;
+  /* Removed margin-bottom, gap on parent container will handle spacing */
 }
 
 .dashboard-header h1 {

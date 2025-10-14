@@ -34,19 +34,31 @@ function Transcripts() {
         fetchPageData();
     }, [isPremium]);
 
-    const handleGenerateMinutes = async (transcriptId) => {
-        setMessage(`Generating minutes for ${transcriptId}...`);
+    const handleGenerateMinutes = async (transcript) => {
+        setMessage(`Processing minutes for ${transcript.meeting_name}...`);
         try {
-            const response = await api.post("/generate-minutes", { transcript_id: transcriptId });
-            const newMinutesId = response.data._id;
-            if (newMinutesId) {
-                setMessage("Minutes generated successfully! Navigating...");
-                navigate(`/minutes/${newMinutesId}`); // Navigate to the new minute
+            if (autoMode) {
+                // --- AUTOMATED FLOW ---
+                await api.post("/process-automated", { 
+                    transcript_text: transcript.transcript,
+                    meeting_id: transcript.meeting_id 
+                });
+                setMessage("✅ Automation started! You'll get a notification when it's done.");
+
             } else {
-                setMessage("Error: Could not get ID for new minutes.");
+                // --- MANUAL FLOW ---
+                const response = await api.post("/generate-minutes", { transcript_id: transcript._id });
+                const newMinutesId = response.data._id;
+                if (newMinutesId) {
+                    setMessage("Minutes generated successfully! Navigating...");
+                    navigate(`/minutes/${newMinutesId}`); // Navigate to the new minute
+                } else {
+                    setMessage("Error: Could not get ID for new minutes.");
+                }
             }
         } catch (error) {
-            setMessage("Error generating minutes.");
+            const errorDetail = error.response?.data?.detail || "An unknown error occurred.";
+            setMessage(`❌ Error: ${errorDetail}`);
         }
     };
 
@@ -104,10 +116,10 @@ function Transcripts() {
                                 
                                 <div className="card-actions">
                                     <button 
-                                        onClick={() => handleGenerateMinutes(transcript._id)} 
+                                        onClick={() => handleGenerateMinutes(transcript)} 
                                         className="form-submit-btn"
                                     >
-                                        Generate Minutes
+                                        {autoMode ? "🚀 Start Automation" : "Generate Minutes"}
                                     </button>
                                 </div>
                             </div>

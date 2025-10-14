@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useUserRole } from "../hooks/useUserRole";
+import { useAutomation } from "../context/AutomationContext"; // Import the automation context
 import api from "../lib/axios";
 
 function NotificationCenter() {
@@ -7,6 +8,7 @@ function NotificationCenter() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const { isPremium } = useUserRole();
+    const { startAutomation, updateAutomation, endAutomation } = useAutomation(); // Get automation functions
     
     useEffect(() => {
         fetchNotifications();
@@ -18,8 +20,26 @@ function NotificationCenter() {
     const fetchNotifications = async () => {
         try {
             const res = await api.get("/notifications");
-            setNotifications(res.data);
-            setUnreadCount(res.data.filter(n => !n.read).length);
+            const newNotifications = res.data;
+            setNotifications(newNotifications);
+            setUnreadCount(newNotifications.filter(n => !n.read).length);
+
+            // Check for automation updates
+            const latestAutomationNotification = newNotifications
+                .filter(n => n.related_id) // Filter for notifications tied to a process
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            if (latestAutomationNotification) {
+                if (latestAutomationNotification.type === 'success') {
+                    endAutomation('success', latestAutomationNotification.message);
+                } else if (latestAutomationNotification.type === 'error') {
+                    endAutomation('error', latestAutomationNotification.message);
+                } else {
+                    // It's a running process
+                    updateAutomation(latestAutomationNotification.message);
+                }
+            }
+
         } catch (error) {
             console.error("Failed to fetch notifications:", error);
         }

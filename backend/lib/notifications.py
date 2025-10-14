@@ -18,6 +18,67 @@ def create_notification(user_id: str, message: str, type: str = "info", related_
     result = db.notifications.insert_one(notification)
     return str(result.inserted_id)
 
+class AutomationNotifier:
+    """A helper class to send standardized notifications for the automation flow."""
+    def __init__(self, user_id: str, meeting_id: str):
+        self.user_id = user_id
+        self.meeting_id = meeting_id
+
+    def start(self):
+        """Notify that the automation process has started."""
+        create_notification(
+            self.user_id,
+            "🚀 Automation process has started...",
+            "info",
+            self.meeting_id
+        )
+
+    def step_transcribe(self):
+        """Notify that transcription is starting."""
+        create_notification(
+            self.user_id,
+            "Step 1: Transcribing video...",
+            "info",
+            self.meeting_id
+        )
+
+    def step_minutes(self):
+        """Notify that minute generation is starting."""
+        create_notification(
+            self.user_id,
+            "Step 2: Generating minutes...",
+            "info",
+            self.meeting_id
+        )
+
+    def step_actions(self):
+        """Notify that action item extraction is starting."""
+        create_notification(
+            self.user_id,
+            "Step 3: Extracting action items...",
+            "info",
+            self.meeting_id
+        )
+
+    def success(self):
+        """Notify that the entire process was successful."""
+        create_notification(
+            self.user_id,
+            "✅ Automation complete! Your meeting has been processed.",
+            "success",
+            self.meeting_id
+        )
+
+    def error(self, reason: str):
+        """Notify that the process failed."""
+        create_notification(
+            self.user_id,
+            f"❌ Automation failed. Reason: {reason}",
+            "error",
+            self.meeting_id
+        )
+
+
 def get_user_notifications(user_id: str, limit: int = 20) -> list:
     """Gets recent notifications for a user."""
     db = get_db()

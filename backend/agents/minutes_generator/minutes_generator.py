@@ -61,11 +61,18 @@ def extract_future_topics(text: str) -> list:
     print(f"Found {len(future_topics)} potential future topics.")
     return future_topics
 
-def generate_minutes(user_id: str = "user_placeholder_123", transcript_id: str = None):
+def generate_minutes(user_id: str = "user_placeholder_123", transcript_id: str = None, transcript_text: str = None):
     """Main function to generate and save meeting minutes to MongoDB."""
     print("\n--- 🚀 Starting Minutes Generator ---")
-    # This now reads from the database instead of a file
-    transcript = load_transcript_from_db(user_id, transcript_id)
+    
+    transcript = ""
+    if transcript_text:
+        print("🧠 Using provided transcript text.")
+        transcript = transcript_text
+    elif transcript_id or user_id:
+        # This now reads from the database instead of a file
+        transcript = load_transcript_from_db(user_id, transcript_id)
+    
     if not transcript:
         print("Aborting: No transcript content to process.")
         return
