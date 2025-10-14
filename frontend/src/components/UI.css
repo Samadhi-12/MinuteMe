@@ -107,6 +107,32 @@
   text-decoration: underline;
 }
 
+/* Status Badges for Action Items */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.status-badge.pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+.status-badge.in-progress {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue);
+}
+.status-badge.completed {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+.status-badge.overdue {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
 /* Filter bar */
 .filter-bar {
   display: flex;
@@ -173,6 +199,31 @@
   color: white;
 }
 
+/* Add these styles for the Minutes and Agenda cards */
+.card-summary {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  /* Clamp text to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+}
+
+.card-link {
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.card-link:hover {
+  text-decoration: underline;
+}
+/* End of new styles */
+
 /* Messages */
 .message-banner {
   background-color: var(--secondary-dark);
@@ -180,4 +231,335 @@
   padding: 1rem;
   margin-bottom: 1.5rem;
   border-radius: 0.25rem;
+}
+
+/* Add these styles for tier-related UI elements */
+
+/* Tier badge */
+.tier-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.tier-free {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.tier-premium {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+/* Upgrade prompt */
+.upgrade-prompt {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--accent-blue);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.upgrade-link {
+  color: var(--accent-blue);
+  text-decoration: underline;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+/* Quota warning */
+.quota-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Tabs for mode selection */
+.tabs {
+  display: flex;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tab.active {
+  color: var(--accent-blue);
+  border-bottom: 2px solid var(--accent-blue);
+}
+
+.tab:disabled {
+  color: var(--border-color);
+  cursor: not-allowed;
+}
+
+/* Add notification styles */
+
+.notification-center {
+  position: relative;
+}
+
+.notification-bell {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  position: relative;
+  padding: 0.5rem;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 350px;
+  background: var(--primary-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  z-index: 100;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.notification-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-header h3 {
+  margin: 0;
+}
+
+.mark-all-read {
+  background: transparent;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.notification-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.notification-item.unread {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.notification-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-icon {
+  margin-right: 1rem;
+  font-size: 1.25rem;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content p {
+  margin: 0;
+  margin-bottom: 0.25rem;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.empty-notifications {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.notification-upgrade {
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  background: rgba(59, 130, 246, 0.05);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Meeting input options */
+.meeting-input-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .meeting-input-options {
+    flex-direction: row;
+  }
+}
+
+.input-option {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.option-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border-color);
+  z-index: 0;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .option-divider::before {
+    display: block;
+  }
+}
+
+.option-divider span {
+  background-color: var(--primary-dark);
+  padding: 0.5rem;
+  z-index: 1;
+  position: relative;
+  color: var(--text-secondary);
+}
+
+.quota-display {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quota-available {
+  color: var(--success);
+}
+
+.quota-depleted {
+  color: var(--warning);
+}
+
+.processing-state, .success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.processing-note {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.success-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* Guided Flow Card on Detail Pages */
+.guided-flow-card {
+  background-color: var(--secondary-dark);
+  border: 1px solid var(--accent-blue);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.guided-flow-card h3 {
+  margin-top: 0;
+  color: var(--accent-blue);
+}
+
+.guided-flow-card p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* Styled Lists for Details */
+.styled-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.styled-list li {
+  background-color: var(--secondary-dark);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid var(--accent-blue);
+}
+
+.styled-list li strong {
+  color: var(--accent-blue);
+}
+
+.deadline-tag {
+  display: inline-block;
+  background-color: var(--primary-dark);
+  color: var(--text-secondary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  margin-left: 0.75rem;
+  border: 1px solid var(--border-color);
 }

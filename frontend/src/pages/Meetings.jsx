@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../lib/axios";
+import { useUserRole } from "../hooks/useUserRole";
+import ProcessingModeToggle from "../components/ProcessingModeToggle";
 
 function Meetings() {
     const [meetings, setMeetings] = useState([]);
@@ -10,21 +12,29 @@ function Meetings() {
     const [driveLink, setDriveLink] = useState("");
     const [meetingDate, setMeetingDate] = useState("");
     const [meetingName, setMeetingName] = useState("");
+    const { isPremium } = useUserRole();
+    const [autoMode, setAutoMode] = useState(false);
+    const [automationQuota, setAutomationQuota] = useState(5);
 
     useEffect(() => {
-        async function fetchMeetings() {
+        async function fetchPageData() {
             try {
                 setLoading(true);
-                const response = await api.get("/meetings");
-                setMeetings(response.data);
+                const meetingsRes = await api.get("/meetings");
+                setMeetings(meetingsRes.data);
+
+                if (!isPremium) {
+                    const quotaRes = await api.get("/user/automation-quota");
+                    setAutomationQuota(quotaRes.data.remaining);
+                }
             } catch (error) {
                 setMessage("Failed to load meetings.");
             } finally {
                 setLoading(false);
             }
         }
-        fetchMeetings();
-    }, []);
+        fetchPageData();
+    }, [isPremium]);
 
     const handleStatusChange = async (meeting, status) => {
         console.log(`[DEBUG] Changing status for meeting ${meeting._id} to ${status}`);
@@ -84,8 +94,20 @@ function Meetings() {
 
     return (
         <div className="form-container">
-            <h2>Upcoming Meetings</h2>
-            {message && <p>{message}</p>}
+            <div className="page-header">
+                <h2>Upcoming Meetings</h2>
+                <p className="subtitle">Manage your scheduled meetings and process recordings</p>
+            </div>
+            
+            {message && <div className="message-banner">{message}</div>}
+
+            <ProcessingModeToggle 
+                autoMode={autoMode}
+                setAutoMode={setAutoMode}
+                isPremium={isPremium}
+                automationQuota={automationQuota}
+            />
+
             {meetings.length > 0 ? (
                 <div className="card-list">
                     {meetings.map((meeting) => (

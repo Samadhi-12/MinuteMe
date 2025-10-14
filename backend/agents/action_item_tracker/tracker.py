@@ -159,10 +159,15 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                 )
                 current_start += timedelta(minutes=item_duration)
     
-    # Save action items as separate documents
+    # Save action items as separate documents and collect them
+    saved_items = []
     if minutes_doc and minutes_doc.get("_id"):
         for item in result['action_items']:
-            save_action_item(item, user_id, minutes_doc["_id"])
+            saved_item = save_action_item(item, user_id, minutes_doc["_id"])
+            saved_items.append(saved_item)
+    
+    # Replace the original list with the saved items (which include IDs)
+    result['action_items'] = saved_items
 
     # --- NEW: Close the loop by generating the next agenda ---
     if minutes_doc and minutes_doc.get("next_meeting_date"):

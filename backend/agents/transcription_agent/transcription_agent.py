@@ -122,6 +122,47 @@ def transcribe_video(video_path: str = None, video_url: str = None, user_id: str
         # Re-raise for the API endpoint
         raise
 
+async def get_video_length(video_url: str) -> float:
+    """
+    Gets the length of a video in minutes from a URL.
+    
+    This function checks if the URL contains length information or uses
+    a default value for testing. In production, this should be replaced
+    with actual video length detection.
+    
+    Args:
+        video_url: URL to the video file
+    
+    Returns:
+        Float representing video length in minutes
+    """
+    try:
+        # Option 1: Check if the URL contains length information (as a query parameter)
+        import re
+        
+        length_match = re.search(r"length=(\d+)", video_url)
+        if length_match:
+            # Length parameter is present in the URL
+            return float(length_match.group(1))
+        
+        # Option 2: For development/testing, you can add special prefixes to test different lengths
+        if video_url.startswith("test:short:"):
+            return 10.0  # 10 minute video (within free tier)
+        elif video_url.startswith("test:long:"):
+            return 20.0  # 20 minute video (exceeds free tier)
+            
+        # Option 3: In a production implementation, you would:
+        # - For Google Drive: Use Drive API to get metadata
+        # - For direct uploads: Use ffmpeg or moviepy to check duration
+        
+        print(f"[INFO] Estimating video length for {video_url}")
+        return 10.0  # Default to 10 minutes for testing
+        
+    except Exception as e:
+        print(f"Error determining video length: {e}")
+        # Default to a safe value for development
+        return 10.0
+
 if __name__ == '__main__':
     # --- How to use this script ---
     # 1. Make sure you have a .env file in the `backend` directory with your GOOGLE_API_KEY.

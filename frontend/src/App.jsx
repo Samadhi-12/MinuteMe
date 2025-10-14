@@ -18,12 +18,13 @@ import MinuteDetail from "./pages/MinuteDetail"; // Import the new detail page
 import ActionItems from "./pages/ActionItems";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
-import CreateAgenda from "./pages/CreateAgenda";
+// CreateAgenda is no longer needed as a separate page
 import Calendar from "./pages/Calendar"; // Import the new Calendar page
 import Transcripts from "./pages/Transcripts";
 import Navbar from "./components/Navbar";
 import Meetings from "./pages/Meetings";
 import AdminDashboard from "./pages/Admin"; // Import the new admin page
+import NotificationCenter from "./components/NotificationCenter";
 import "./App.css";
 import "./components/UI.css";
 
@@ -44,7 +45,10 @@ function App() {
     <div className="App">
       <header>
         <SignedIn>
-          <Navbar />
+          <div className="header-container">
+            <Navbar />
+            <NotificationCenter />
+          </div>
         </SignedIn>
       </header>
       <main>
@@ -70,14 +74,7 @@ function App() {
               </>
             }
           />
-          <Route
-            path="/create-agenda"
-            element={
-              <SignedIn>
-                <CreateAgenda />
-              </SignedIn>
-            }
-          />
+          {/* The /create-agenda route is no longer needed */}
           <Route
             path="/agenda"
             element={

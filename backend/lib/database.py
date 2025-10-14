@@ -108,13 +108,17 @@ def get_agenda(meeting_id: str, user_id: str):
         agenda["_id"] = str(agenda["_id"])
     return agenda
 
-def save_transcript(transcript_text: str, user_id: str):
+def save_transcript(transcript_text: str, user_id: str, meeting_id: str, meeting_name: str, meeting_date: str, automated: bool = False):
     """Saves a raw transcript for a specific user."""
     db = get_db()
     transcript_data = {
         "user_id": user_id,
         "transcript": transcript_text,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
+        "meeting_id": meeting_id,
+        "meeting_name": meeting_name,
+        "meeting_date": meeting_date,
+        "automated": automated
     }
     result = db.transcripts.insert_one(transcript_data)
     return str(result.inserted_id)

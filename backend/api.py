@@ -3,11 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from agents.agenda_planner.agenda_planner import generate_agenda
 from agents.minutes_generator.minutes_generator import generate_minutes
 from agents.action_item_tracker.tracker import extract_and_schedule_tasks
-from agents.transcription_agent.transcription_agent import transcribe_video
+from agents.transcription_agent.transcription_agent import transcribe_video, get_video_length
+from agents.action_item_tracker.calendar_service import schedule_action_item
+import dateparser
+from bson import ObjectId
+from datetime import datetime
+import os
 from lib.auth import get_current_user
-# MODIFIED: Import new DB functions
 from lib.database import (
-    get_db,  # <-- Add this
+    get_db,
     get_all_agendas_for_user,
     get_all_action_items_for_user,
     get_agenda,
@@ -17,13 +21,24 @@ from lib.database import (
     save_meeting,
     get_all_meetings_for_user,
     update_meeting,
-    delete_meeting
+    delete_meeting,
+    save_transcript # <-- Import save_transcript
 )
-from agents.action_item_tracker.calendar_service import schedule_action_item
-import dateparser
-from bson import ObjectId
-from datetime import datetime
-import os
+from lib.notifications import (
+    get_user_notifications,
+    mark_all_notifications_read,
+    mark_notification_read,
+    create_notification,
+    update_notification_email_status,
+    send_email_notification
+)
+from lib.quota import (
+    get_monthly_meeting_count,
+    get_monthly_automation_cycles,
+    increment_automation_cycle,
+    check_free_tier_limits,
+    get_monthly_transcription_count,
+)
 
 app = FastAPI()
 
@@ -97,10 +112,19 @@ async def get_action_items_endpoint(current_user: dict = Depends(get_current_use
 @app.get("/minutes")
 async def get_all_minutes_endpoint(current_user: dict = Depends(get_current_user)):
     """
-    Retrieves all minutes documents for the authenticated user.
+    Retrieves minutes documents for the authenticated user.
+    For free users, only returns the last 3 minutes.
     """
     user_id = current_user.get("sub")
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    
     minutes = get_all_minutes_for_user(user_id)
+    
+    # TIER CHECK: Limit history for free users
+    if tier == "free" and len(minutes) > 3:
+        # Sort by date and return only the most recent 3
+        minutes = sorted(minutes, key=lambda x: x.get("created_at", ""), reverse=True)[:3]
+        
     return minutes
 
 @app.get("/minutes/{minutes_id}")
@@ -204,47 +228,66 @@ async def transcribe_endpoint(
 ):
     try:
         user_id = current_user.get("sub")
+        tier = current_user.get("metadata", {}).get("tier", "free")
         video_url = request_body.get("video_url")
-        meeting_date = request_body.get("meeting_date")
-        meeting_name = request_body.get("meeting_name")
         meeting_id = request_body.get("meeting_id")
-        
-        print(f"[DEBUG] Transcribe request: user_id={user_id}, meeting_id={meeting_id}, video_url={video_url}")
+        meeting_name = request_body.get("meeting_name")
+        meeting_date = request_body.get("meeting_date")
 
-        if not user_id or not video_url:
-            raise HTTPException(status_code=400, detail="User ID or video_url missing.")
+        if not all([video_url, meeting_id, meeting_name, meeting_date]):
+            raise HTTPException(status_code=400, detail="Missing required fields for transcription.")
 
-        db = get_db()
-        # Prevent duplicate transcript for the same meeting
-        if meeting_id:
-            existing = db.transcripts.find_one({"meeting_id": meeting_id, "user_id": user_id})
-            if existing:
-                print(f"[DEBUG] Transcript already exists for meeting {meeting_id}. Aborting new transcription.")
-                existing["_id"] = str(existing["_id"])
-                return {"message": "Transcript already exists for this meeting.", "transcript": existing}
+        # TIER CHECK: Video length and transcription quota
+        if tier == "free":
+            video_length_minutes = await get_video_length(video_url)
+            if video_length_minutes > 15:
+                raise HTTPException(status_code=403, detail="Free tier users can only transcribe meetings up to 15 minutes.")
+            
+            exceeded, quota_info = check_free_tier_limits(user_id, "transcription")
+            if exceeded:
+                raise HTTPException(status_code=403, detail=f"You've reached your monthly limit of {quota_info['limit']} video transcriptions.")
 
-        print(f"Authenticated request. Transcribing video for user: {user_id}")
-        # This function should now ONLY return text
         transcript_text = transcribe_video(video_url=video_url, user_id=user_id)
         
-        # This is now the ONLY place the transcript is saved
-        transcript_data = {
-            "user_id": user_id,
-            "transcript": transcript_text,
-            "created_at": datetime.utcnow(),
-            "meeting_date": meeting_date,
-            "meeting_name": meeting_name,
-            "meeting_id": meeting_id
-        }
-        
-        print(f"[DEBUG] Saving transcript for meeting {meeting_id}")
-        result = db.transcripts.insert_one(transcript_data)
-        print(f"[DEBUG] Transcript saved with ID: {result.inserted_id}")
+        if not transcript_text:
+            raise HTTPException(status_code=500, detail="Transcription failed to produce text.")
 
-        transcript_data["_id"] = str(result.inserted_id)
-        return {"message": "Transcription successful and saved.", "transcript": transcript_data}
+        # Save the transcript and mark it as automated
+        from lib.database import save_transcript
+        transcript_id = save_transcript(
+            transcript_text=transcript_text,
+            user_id=user_id,
+            meeting_id=meeting_id,
+            meeting_name=meeting_name,
+            meeting_date=meeting_date,
+            automated=True # This will be used for quota counting
+        )
+        
+        return {"message": "Transcription successful", "transcript_id": transcript_id}
     except Exception as e:
-        print(f"[DEBUG] Error during transcription: {e}")
+        print(f"Error in /transcribe: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/save-manual-transcript")
+async def save_manual_transcript_endpoint(
+    request_body: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Saves a manually provided transcript."""
+    try:
+        user_id = current_user.get("sub")
+        transcript_id = save_transcript(
+            transcript_text=request_body.get("transcript"),
+            user_id=user_id,
+            meeting_id=request_body.get("meeting_id"),
+            meeting_name=request_body.get("meeting_name"),
+            meeting_date=request_body.get("meeting_date"),
+            automated=False # This is a manual submission
+        )
+        return {"message": "Transcript saved", "transcript_id": transcript_id}
+    except Exception as e:
+        print(f"Error saving manual transcript: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -263,23 +306,22 @@ async def get_transcripts_endpoint(current_user: dict = Depends(get_current_user
 @app.post("/generate-minutes")
 async def generate_minutes_endpoint(request_body: dict = Body(None), current_user: dict = Depends(get_current_user)):
     """
-    Generates minutes from the latest transcript for the authenticated user.
+    Generates minutes from a transcript for the authenticated user.
+    If no transcript_id is provided, it uses the latest one.
     """
     try:
         user_id = current_user.get("sub")
-        transcript_id = request_body.get("transcript_id") if request_body else None
-        # If transcript_id is provided, use it; else use latest
+        transcript_id = None
+        if request_body:
+            transcript_id = request_body.get("transcript_id")
+        
+        # This function returns the full minutes document, including the new _id
         minutes_data = generate_minutes(user_id=user_id, transcript_id=transcript_id)
+        
         if not minutes_data:
-            raise HTTPException(status_code=404, detail="Failed to generate minutes. No transcript found?")
-        
-        # Convert ObjectId fields to strings
-        if "_id" in minutes_data and not isinstance(minutes_data["_id"], str):
-            minutes_data["_id"] = str(minutes_data["_id"])
-        if "meeting_id" in minutes_data and not isinstance(minutes_data["meeting_id"], str):
-            minutes_data["meeting_id"] = str(minutes_data["meeting_id"])
-        
-        return {"message": "Minutes generated successfully.", "minutes": minutes_data}
+            raise HTTPException(status_code=500, detail="Failed to generate minutes from transcript.")
+            
+        return minutes_data
     except Exception as e:
         print(f"Error generating minutes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -297,20 +339,18 @@ async def generate_action_items_endpoint(
     try:
         user_id = current_user.get("sub")
         minutes_id = request_body.get("minutes_id")
-        if not user_id or not minutes_id:
-            raise HTTPException(status_code=400, detail="User ID or minutes_id missing.")
-
-        print(f"Authenticated request. Generating action items for minutes_id: {minutes_id}")
-        action_items_result = extract_and_schedule_tasks(user_id=user_id, minutes_id=minutes_id)
-        if action_items_result is None:
-            raise HTTPException(status_code=404, detail="Minutes document not found.")
-
-        return {
-            "message": "Action items generated and scheduled successfully.",
-            "action_items_result": action_items_result
-        }
+        if not minutes_id:
+            raise HTTPException(status_code=400, detail="minutes_id is required.")
+        
+        # This function now returns the list of created action items
+        result = extract_and_schedule_tasks(user_id=user_id, minutes_id=minutes_id)
+        
+        if result is None:
+            raise HTTPException(status_code=404, detail="Failed to process action items. Minutes not found.")
+            
+        return result.get("action_items", []) # Return the list of action items
     except Exception as e:
-        print(f"Error processing action items: {e}")
+        print(f"Error generating action items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -440,3 +480,67 @@ async def list_users(current_user: dict = Depends(get_current_user)):
 async def update_user_tier(user_id: str, tier: str, current_user: dict = Depends(get_current_user)):
     if current_user.get("metadata", {}).get("role") != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
+
+# Replace these notification endpoints
+
+@app.get("/notifications")
+async def get_notifications_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves notifications for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    
+    notifications = get_user_notifications(user_id)
+    return notifications
+
+@app.post("/notifications/read-all")
+async def read_all_notifications_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Marks all notifications as read for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    result = mark_all_notifications_read(user_id)
+    return {"success": True, "updated": result}
+
+@app.patch("/notifications/{notification_id}/read")
+async def read_notification_endpoint(
+    notification_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Marks a specific notification as read.
+    """
+    user_id = current_user.get("sub")
+    result = mark_notification_read(notification_id, user_id)
+    return {"success": result}
+
+@app.get("/user/automation-quota")
+async def get_automation_quota_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Returns the user's remaining automation cycles for the month.
+    """
+    user_id = current_user.get("sub")
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    
+    # Premium users have unlimited automation cycles
+    if tier == "premium":
+        return {"limit": -1, "used": 0, "remaining": -1}
+    
+    _, quota_info = check_free_tier_limits(user_id, "automation")
+    return quota_info
+
+@app.get("/user/transcription-quota")
+async def get_transcription_quota_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Returns the user's remaining video transcription quota for the month.
+    """
+    user_id = current_user.get("sub")
+    tier = current_user.get("metadata", {}).get("tier", "free")
+    
+    # Premium users have unlimited transcriptions
+    if tier == "premium":
+        return {"limit": -1, "used": 0, "remaining": -1}
+    
+    _, quota_info = check_free_tier_limits(user_id, "transcription")
+    return quota_info

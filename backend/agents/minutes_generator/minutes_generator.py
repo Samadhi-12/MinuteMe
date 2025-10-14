@@ -88,6 +88,7 @@ def generate_minutes(user_id: str = "user_placeholder_123", transcript_id: str =
 
     # Save the structured minutes to MongoDB
     inserted_id = save_minutes(output_data, user_id)
+    output_data['_id'] = inserted_id # Add the ID to the returned data
 
     print(f"✅ Meeting minutes successfully saved to MongoDB with ID: {inserted_id}")
     print("--- ✨ Finished Minutes Generator ---\n")

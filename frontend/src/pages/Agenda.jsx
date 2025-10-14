@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import api from "../lib/axios";
 import AgendaForm from "../components/AgendaForm";
 
@@ -7,21 +8,29 @@ function Agenda() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [editAgenda, setEditAgenda] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const location = useLocation();
+
+  const fetchAgendas = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/agendas");
+      setAgendas(response.data);
+    } catch (error) {
+      console.error("Failed to fetch agendas", error);
+      setMessage("Failed to load agendas.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchAgendas() {
-      try {
-        setLoading(true);
-        const response = await api.get("/agendas");
-        setAgendas(response.data);
-      } catch (error) {
-        console.error("Failed to fetch agendas", error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchAgendas();
-  }, []);
+    // Check for state passed from dashboard to open the modal automatically
+    if (location.state?.openCreateModal) {
+      setIsCreateModalOpen(true);
+    }
+  }, [location.state]);
 
   const handleSchedule = async (agendaId) => {
     try {
@@ -38,7 +47,18 @@ function Agenda() {
     setEditAgenda(agenda);
   };
 
-  const handleEditSubmit = async (payload, setMessage) => {
+  const handleCreateSubmit = async (payload, setFormMessage) => {
+    try {
+        await api.post("/agenda", payload);
+        setFormMessage("Agenda created successfully!");
+        setIsCreateModalOpen(false); // Close modal on success
+        fetchAgendas(); // Refresh the list of agendas
+    } catch (err) {
+        setFormMessage("Error creating agenda. Try again.");
+    }
+  };
+
+  const handleEditSubmit = async (payload, setFormMessage) => {
     try {
       const agendaItems = [
         ...payload.topics.map(topic => ({
@@ -60,21 +80,41 @@ function Agenda() {
       };
 
       await api.patch(`/agenda/${editAgenda.meeting_id}`, updatedAgenda);
-      setMessage("Agenda updated!");
+      setFormMessage("Agenda updated!");
       setEditAgenda(null);
-      const response = await api.get("/agendas");
-      setAgendas(response.data);
+      fetchAgendas(); // Refresh the list
     } catch (err) {
-      setMessage("Error updating agenda.");
+      setFormMessage("Error updating agenda.");
     }
   };
 
-  if (loading) return <p>Loading agendas...</p>;
+  if (loading) return (
+    <div className="form-container">
+        <div className="page-header">
+            <h2>My Agendas</h2>
+            <p className="subtitle">View, edit, and schedule all your meeting agendas.</p>
+        </div>
+        <div className="loading-container">
+            <div className="loader"></div>
+            <p>Loading agendas...</p>
+        </div>
+    </div>
+  );
 
   return (
     <div className="form-container">
-      <h2>My Agendas</h2>
-      {message && <p>{message}</p>}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+            <h2>My Agendas</h2>
+            <p className="subtitle">View, edit, and schedule all your meeting agendas.</p>
+        </div>
+        <button className="primary-action-btn" onClick={() => setIsCreateModalOpen(true)}>
+            + Create New Agenda
+        </button>
+      </div>
+
+      {message && <p className="message-banner">{message}</p>}
+      
       {agendas.length > 0 ? (
         <div className="grid-container">
           {agendas.map((agenda) => (
@@ -124,7 +164,26 @@ function Agenda() {
           ))}
         </div>
       ) : (
-        <p>No agendas found. Go to "Create Agenda" to make one.</p>
+        <div className="empty-state">
+            <div className="empty-icon">🗓️</div>
+            <h3>No agendas yet</h3>
+            <p>Click "Create New Agenda" to get started.</p>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Create New Agenda</h3>
+                <AgendaForm
+                    initialValues={{}}
+                    mode="create"
+                    onSubmit={handleCreateSubmit}
+                    onCancel={() => setIsCreateModalOpen(false)}
+                />
+            </div>
+        </div>
       )}
 
       {/* Edit Modal */}

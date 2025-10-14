@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import api from "../lib/axios";
 import AnalyzeMeetingModal from "../components/AnalyzeMeetingModal";
 import { formatDateRelative, formatMeetingId } from "../utils/formatters";
+import { useUserRole } from "../hooks/useUserRole";
+import ProcessingModeToggle from "../components/ProcessingModeToggle"; // Import the new component
 
 function Dashboard() {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -10,6 +12,10 @@ function Dashboard() {
     const [upcomingActions, setUpcomingActions] = useState([]);
     const [agendaCount, setAgendaCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [autoMode, setAutoMode] = useState(false);
+    const { isPremium, tier } = useUserRole();
+    const [automationQuota, setAutomationQuota] = useState(5);
+    const navigate = useNavigate(); // Initialize useNavigate
 
     useEffect(() => {
         async function fetchDashboardData() {
@@ -37,6 +43,12 @@ function Dashboard() {
                 const agendasRes = await api.get("/agendas");
                 setAgendaCount(agendasRes.data.length);
                 
+                // Get automation quota for free users
+                if (!isPremium) {
+                    const quotaRes = await api.get("/user/automation-quota");
+                    setAutomationQuota(quotaRes.data.remaining);
+                }
+                
             } catch (error) {
                 console.error("Failed to fetch dashboard data", error);
             } finally {
@@ -45,10 +57,15 @@ function Dashboard() {
         }
         
         fetchDashboardData();
-    }, []);
+    }, [isPremium]);
 
     const handleAnalyzeMeeting = () => {
         setIsModalOpen(true);
+    };
+
+    const handleCreateAgenda = () => {
+        // Navigate to the agenda page and pass state to open the modal
+        navigate('/agenda', { state: { openCreateModal: true } });
     };
 
     return (
@@ -56,6 +73,7 @@ function Dashboard() {
             <AnalyzeMeetingModal 
                 isOpen={isModalOpen} 
                 onClose={() => setIsModalOpen(false)} 
+                autoMode={autoMode} // Pass autoMode to the modal
             />
 
             <header className="dashboard-header">
@@ -68,11 +86,20 @@ function Dashboard() {
                     >
                         ✨ Analyze New Meeting
                     </button>
-                    <Link to="/create-agenda" className="secondary-action-btn">
+                    {/* Change this from a Link to a button with an onClick handler */}
+                    <button onClick={handleCreateAgenda} className="secondary-action-btn">
                         📝 Create New Agenda
-                    </Link>
+                    </button>
                 </div>
             </header>
+
+            {/* Replace the old toggle with the new component */}
+            <ProcessingModeToggle 
+                autoMode={autoMode}
+                setAutoMode={setAutoMode}
+                isPremium={isPremium}
+                automationQuota={automationQuota}
+            />
 
             <div className="dashboard-stats">
                 <div className="stat-card">
