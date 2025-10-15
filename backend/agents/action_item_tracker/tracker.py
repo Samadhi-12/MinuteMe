@@ -151,7 +151,9 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                 owner = item.get('owner')
                 description = f"Action item assigned to {owner}"
                 item_duration = item.get("duration", 60)
-                schedule_action_item(
+                
+                # --- MODIFIED: Capture the created event ---
+                created_event = schedule_action_item(
                     user_id=user_id, # Pass user_id
                     task_name=task,
                     description=description,
@@ -159,6 +161,11 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
                     owner=owner,
                     duration_minutes=item_duration
                 )
+                
+                # --- MODIFIED: Store the Google Event ID if it exists ---
+                if created_event and 'id' in created_event:
+                    item['google_event_id'] = created_event['id']
+
                 current_start += timedelta(minutes=item_duration)
     
     # Save action items as separate documents and collect them
