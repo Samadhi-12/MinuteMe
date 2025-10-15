@@ -88,6 +88,17 @@ function Agenda() {
     }
   };
 
+  const handleDelete = async (agendaId) => {
+    if (!window.confirm("Delete this agenda? This cannot be undone.")) return;
+    try {
+        await api.delete(`/agenda/${agendaId}`);
+        setMessage("Agenda deleted.");
+        fetchAgendas(); // Refresh list
+    } catch (err) {
+        setMessage("Error deleting agenda.");
+    }
+};
+
   if (loading) return (
     <div className="form-container">
         <div className="page-header">
@@ -158,6 +169,13 @@ function Agenda() {
                   onClick={() => handleEdit(agenda)}
                 >
                   Edit Agenda
+                </button>
+                <button
+                  className="form-submit-btn danger"
+                  style={{marginTop: '1em', marginLeft: '1em', width: 'auto', padding: '0.5em 1em'}}
+                  onClick={() => handleDelete(agenda.meeting_id)}
+                >
+                  Delete
                 </button>
               </div>
             </div>

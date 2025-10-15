@@ -544,6 +544,21 @@ async def delete_meeting_endpoint(
         raise HTTPException(status_code=404, detail="Meeting not found or delete failed.")
     return {"message": "Meeting deleted."}
 
+@app.delete("/agenda/{agenda_id}")
+async def delete_agenda_endpoint(
+    agenda_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Deletes an agenda for the authenticated user.
+    """
+    user_id = current_user.get("sub")
+    db = get_db()
+    result = db.agendas.delete_one({"meeting_id": agenda_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Agenda not found or already deleted.")
+    return {"message": "Agenda deleted successfully."}
+
 @app.get("/admin/users")
 async def list_users(current_user: dict = Depends(get_current_user)):
     print("[/admin/users] current_user:", current_user)
