@@ -16,7 +16,7 @@ function Upgrade() {
         <div className="upgrade-card free-card">
           <h3>Free</h3>
           <ul className="feature-list">
-            <li><CheckCircle size={18} className="feature-icon" /> Up to <strong>15 min</strong> meetings</li>
+            <li><CheckCircle size={18} className="feature-icon" /> Up to <strong>30 min</strong> meetings</li>
             <li><CheckCircle size={18} className="feature-icon" /> <strong>5 meetings</strong> per month</li>
             <li><CheckCircle size={18} className="feature-icon" /> Inbuilt calendar</li>
             <li><CheckCircle size={18} className="feature-icon" /> Manual processing</li>
