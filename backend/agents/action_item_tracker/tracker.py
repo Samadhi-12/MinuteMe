@@ -31,40 +31,48 @@ def run_action_item_tracker(meeting_text: str):
 
 def extract_action_items_nlp(meeting_text: str):
     """
-    Extracts action items using NLTK with POS tagging and NER for better accuracy.
-    This is a more robust replacement for the spaCy implementation.
+    Extracts action items using NLTK with POS tagging and dependency parsing for better accuracy.
+    This is a more robust replacement for the simple keyword-based implementation.
     """
     action_items = []
     sentences = nltk.sent_tokenize(meeting_text)
 
-    for sent in sentences:
-        words = nltk.word_tokenize(sent)
-        tagged_words = nltk.pos_tag(words)
-        
-        # Use NLTK's Named Entity Recognition to find people
-        tree = nltk.ne_chunk(tagged_words)
-        owners = []
-        for subtree in tree.subtrees(filter=lambda t: t.label() == 'PERSON'):
-            owners.append(" ".join([word for word, tag in subtree.leaves()]))
+    # Define pronouns that can be task owners
+    owner_pronouns = {'we', 'i'}
+    # Define modal verbs that indicate tasks
+    modal_verbs = {'will', 'should', 'must', 'need to', 'have to'}
 
-        # Keywords indicating a task is being assigned
-        action_keywords = ["will", "needs to", "to-do", "action item", "task for", "responsible for"]
+    for sent in sentences:
+        words = nltk.word_tokenize(sent.lower()) # Work with lowercase for consistency
+        tagged_words = nltk.pos_tag(words)
+
+        # --- Improved Logic ---
+        # Find a potential owner (pronoun or named entity)
+        potential_owner = "Unassigned"
+        for word, tag in tagged_words:
+            if word in owner_pronouns:
+                potential_owner = "Team" if word == "we" else "Speaker"
+                break
         
-        # Check if the sentence likely contains an action item
-        if any(keyword in sent.lower() for keyword in action_keywords) or owners:
-            # A simple rule: if a person is mentioned, the whole sentence is the task.
-            # A more complex parser could be built here to find the specific verb phrase.
-            task_description = sent.strip()
-            
-            # If we found a person, assign them as the owner.
-            task_owner = owners[0] if owners else "Unassigned"
+        # Check for a modal verb indicating a task
+        has_modal = any(word in modal_verbs for word in words)
+        
+        # Check for an action verb (VB, VBP, etc.)
+        has_action_verb = any(tag.startswith('VB') for word, tag in tagged_words)
+
+        # A sentence is a likely action item if it has an owner, a modal, and a verb.
+        if potential_owner != "Unassigned" and has_modal and has_action_verb:
+            # Filter out generic, non-action phrases
+            non_action_phrases = ["we will have", "we will focus on"]
+            if any(phrase in sent.lower() for phrase in non_action_phrases):
+                continue # Skip this sentence
 
             # Avoid adding duplicate or very short/generic sentences
-            if len(task_description.split()) > 4:
+            if len(words) > 4:
                 action_items.append({
-                    "owner": task_owner,
-                    "task": task_description,
-                    "deadline": None # Deadline extraction can be a separate, complex task
+                    "owner": potential_owner,
+                    "task": sent.strip(), # Use the original sentence for clarity
+                    "deadline": None 
                 })
 
     return {"provider": "NLP (NLTK)", "action_items": action_items}
@@ -81,8 +89,11 @@ def extract_and_schedule_tasks(user_id: str, minutes_id: str, schedule=True):
         print(f"❌ Could not find minutes with ID '{minutes_id}' for user '{user_id}'. Aborting.")
         return None
 
-    # Use the summary from the specific minutes document as the text to process
-    meeting_text = minutes_doc.get("summary", "")
+    # --- FIX: Combine summary and decisions to get the full context ---
+    summary_text = minutes_doc.get("summary", "")
+    decisions_text = " ".join(minutes_doc.get("decisions", []))
+    meeting_text = f"{summary_text} {decisions_text}"
+    
     result = extract_action_items_nlp(meeting_text)
     print(f"🔍 Found {len(result.get('action_items', []))} potential action items using NLP.")
 

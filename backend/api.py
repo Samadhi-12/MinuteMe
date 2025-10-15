@@ -22,7 +22,8 @@ from lib.database import (
     get_all_meetings_for_user,
     update_meeting,
     delete_meeting,
-    save_transcript, # <-- Import save_transcript
+    save_transcript,
+    delete_transcript, # <-- Import delete_transcript
     save_google_credentials,
     get_google_credentials,
     delete_google_credentials
@@ -56,7 +57,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # In production, restrict this to your frontend's domain
     allow_credentials=True,
-    allow_methods=["*"],
+    # --- FIX: Explicitly list the allowed methods ---
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -389,10 +391,23 @@ async def get_transcripts_endpoint(current_user: dict = Depends(get_current_user
     """
     user_id = current_user.get("sub")
     db = get_db()
-    transcripts = list(db.transcripts.find({"user_id": user_id}))
+    transcripts = list(db.transcripts.find({"user_id": user_id}, sort=[("created_at", -1)]))
     for t in transcripts:
-        t["_id"] = str(t["_id"])
+        if "_id" in t:
+            t["_id"] = str(t["_id"])
     return transcripts
+
+@app.delete("/transcripts/{transcript_id}")
+async def delete_transcript_endpoint(
+    transcript_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Deletes a transcript for the authenticated user."""
+    user_id = current_user.get("sub")
+    deleted_count = delete_transcript(transcript_id, user_id)
+    if deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transcript not found or you do not have permission to delete it.")
+    return {"message": "Transcript deleted successfully."}
 
 @app.post("/generate-minutes")
 async def generate_minutes_endpoint(request_body: dict = Body(None), current_user: dict = Depends(get_current_user)):
