@@ -79,8 +79,8 @@ def get_user_input_if_no_previous_file(user_id: str):
         print("🧠 Found previous minutes in DB. Generating topics for next meeting.")
         # Use future_discussion & next_meeting_date from the DB document
         user_input = {
-            "topics": previous_data.get("future_discussion_points", []),
-            "discussion_points": [item.get("task", "") for item in previous_data.get("action_items", [])],
+            "topics": previous_data.get("decisions", []),
+            "discussion_points": previous_data.get("future_discussion_points", []),
             "date": previous_data.get("next_meeting_date")
         }
     else:
