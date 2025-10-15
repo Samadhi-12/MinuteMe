@@ -121,6 +121,21 @@ function Transcripts() {
                                     >
                                         {autoMode ? "🚀 Start Automation" : "Generate Minutes"}
                                     </button>
+                                    <button
+                                        onClick={() => {
+                                            const blob = new Blob([transcript.transcript], { type: "text/plain" });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement("a");
+                                            a.href = url;
+                                            a.download = `${transcript.meeting_name || "transcript"}.txt`;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                        }}
+                                        className="form-submit-btn"
+                                        style={{ marginLeft: "8px" }}
+                                    >
+                                        Download Transcript
+                                    </button>
                                 </div>
                             </div>
                         );
