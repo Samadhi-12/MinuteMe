@@ -51,6 +51,19 @@ function ActionItems() {
             console.error("Failed to update status", error);
         }
     };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this action item? This will also remove it from your calendar.")) {
+            return;
+        }
+        try {
+            await api.delete(`/action-items/${id}`);
+            setActionItems(items => items.filter(item => item.id !== id));
+        } catch (error) {
+            console.error("Failed to delete action item", error);
+            setError("Failed to delete action item. Please try again.");
+        }
+    };
     
     const filteredItems = actionItems.filter(item => {
         if (filter === "all") return true;
@@ -183,6 +196,13 @@ function ActionItems() {
                                             Reopen
                                         </button>
                                     )}
+                                    <button
+                                        onClick={() => handleDelete(item.id)}
+                                        className="action-btn danger"
+                                        style={{ marginLeft: 'auto' }}
+                                    >
+                                        Delete
+                                    </button>
                                 </div>
                             </div>
                         );

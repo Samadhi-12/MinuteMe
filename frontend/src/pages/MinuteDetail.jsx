@@ -74,6 +74,21 @@ function MinuteDetail() {
         }
     };
 
+    const handleDeleteMinute = async () => {
+        if (!window.confirm("Are you sure you want to delete these minutes and all associated action items? This cannot be undone.")) {
+            return;
+        }
+        setMessage("Deleting minutes...");
+        try {
+            await api.delete(`/minutes/${id}`);
+            setMessage("Minutes deleted successfully. Redirecting...");
+            setTimeout(() => navigate("/minutes"), 1500);
+        } catch (error) {
+            console.error("Failed to delete minute:", error);
+            setMessage(`❌ Error: ${error.response?.data?.detail || error.message}`);
+        }
+    };
+
     const handleViewCalendar = () => {
         navigate("/calendar");
     };
@@ -171,6 +186,16 @@ function MinuteDetail() {
             </div>
 
             <div className="detail-section">
+                <h3>Scheduling</h3>
+                <p>
+                    Next Meeting Date: {format(new Date(minute.next_meeting_date), "MMM d, yyyy")}
+                    {minute.next_meeting_date_is_default && (
+                        <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)', marginLeft: '1em' }}>(Default date)</span>
+                    )}
+                </p>
+            </div>
+
+            <div className="detail-section">
                 <h3>Key Decisions</h3>
                 {minute.decisions?.length > 0 ? (
                     <ul className="styled-list">{minute.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul>
@@ -182,6 +207,14 @@ function MinuteDetail() {
                 {minute.future_discussion_points?.length > 0 ? (
                     <ul className="styled-list">{minute.future_discussion_points.map((t, i) => <li key={i}>{t}</li>)}</ul>
                 ) : <p>No future topics were recorded.</p>}
+            </div>
+
+            {/* Danger Zone for Deletion */}
+            <div className="detail-section" style={{ marginTop: '2rem', borderTop: '1px solid var(--danger)' }}>
+                <h3 style={{ color: 'var(--danger)' }}>Danger Zone</h3>
+                <button onClick={handleDeleteMinute} className="form-submit-btn danger">
+                    Delete This Minute
+                </button>
             </div>
         </div>
     );
