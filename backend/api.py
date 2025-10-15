@@ -290,6 +290,7 @@ async def schedule_agenda_endpoint(
         description = "\n".join([item['topic'] for item in agenda.get("agenda", [])])
         # Schedule in Google Calendar
         schedule_action_item(
+            user_id,  # <-- Pass user_id as first argument!
             task_name=agenda.get("meeting_name"),
             description=description,
             deadline_str=agenda.get("meeting_date"),
